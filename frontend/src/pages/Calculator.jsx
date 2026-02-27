@@ -5,7 +5,8 @@ import ExcelUploader from "@/components/ExcelUploader";
 import ProductSearch from "@/components/ProductSearch";
 import PriceCalculator from "@/components/PriceCalculator";
 import PriceResults from "@/components/PriceResults";
-import { Upload, Search, Calculator as CalcIcon } from "lucide-react";
+import QuickCalculator from "@/components/QuickCalculator";
+import { Upload, Search, Calculator as CalcIcon, Zap } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -56,6 +57,27 @@ export default function Calculator() {
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           Υπολογισμός τελικών τιμών πώλησης για FBS & Marketplace
         </p>
+      </div>
+
+      {/* Quick Calculator */}
+      <Section
+        number={<Zap size={14} />}
+        title="Γρήγορος Υπολογισμός"
+        icon={<Zap size={16} />}
+        subtitle="Βάλτε χονδρική τιμή → άμεσο αποτέλεσμα με μέσους όρους"
+        isQuick
+      >
+        <QuickCalculator />
+      </Section>
+
+      {/* Divider */}
+      <div className="relative my-10">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-[var(--border-color)]" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="px-4 text-xs text-[var(--text-muted)] bg-[var(--bg-primary)]">Ή υπολογισμός ανά προϊόν</span>
+        </div>
       </div>
 
       {/* Step 1: Upload */}
