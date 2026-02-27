@@ -138,15 +138,21 @@ export default function Calculator() {
   );
 }
 
-function Section({ number, title, icon, subtitle, disabled, children }) {
+function Section({ number, title, icon, subtitle, disabled, isQuick, children }) {
   return (
-    <div className={`mb-8 ${disabled ? "opacity-40 pointer-events-none" : ""}`} data-testid={`section-${number}`}>
+    <div className={`mb-8 ${disabled ? "opacity-40 pointer-events-none" : ""}`} data-testid={isQuick ? "section-quick" : `section-${number}`}>
       <div className="flex items-center gap-3 mb-4">
-        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-orange)] text-white text-xs font-bold">
-          {number}
-        </span>
+        {isQuick ? (
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-yellow-500 text-black text-xs font-bold">
+            <Zap size={14} />
+          </span>
+        ) : (
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-orange)] text-white text-xs font-bold">
+            {number}
+          </span>
+        )}
         <div className="flex items-center gap-2">
-          <span className="text-[var(--accent-orange)]">{icon}</span>
+          <span className={isQuick ? "text-yellow-500" : "text-[var(--accent-orange)]"}>{icon}</span>
           <h2 className="text-base font-semibold text-[var(--text-primary)]">{title}</h2>
         </div>
         {subtitle && (
