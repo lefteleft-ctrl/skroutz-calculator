@@ -30,6 +30,7 @@ Final Price = (Wholesale + Profit + Fixed Fee) / (1 - MP% - (1 - 1/(1+VAT%)))
 - [x] Dual results: FBS and Marketplace final prices
 - [x] Adjustable VAT (24%/13%/6%), profit, management cost
 - [x] Detailed cost breakdown display
+- [x] **Quick Calculator** - instant pricing with average values from uploaded data
 - [x] Dark theme UI in Greek language
 
 ## Tech Stack
