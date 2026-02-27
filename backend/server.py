@@ -274,6 +274,94 @@ async def get_upload_status():
     )
 
 
+# --- Averages Endpoint (for Quick Calculator) ---
+
+@api_router.get("/averages")
+async def get_averages():
+    """Get average commission/fee values from uploaded data."""
+    pipeline_mp = [
+        {"$match": {"marketplace_commission_pct": {"$exists": True, "$ne": None}}},
+        {"$group": {"_id": None, "avg": {"$avg": "$marketplace_commission_pct"}, "count": {"$sum": 1}}}
+    ]
+    pipeline_fbs = [
+        {"$match": {"fbs_fee": {"$exists": True, "$ne": None}}},
+        {"$group": {"_id": None, "avg": {"$avg": "$fbs_fee"}, "count": {"$sum": 1}}}
+    ]
+    pipeline_mgmt = [
+        {"$match": {"management_cost": {"$exists": True, "$ne": None}}},
+        {"$group": {"_id": None, "avg": {"$avg": "$management_cost"}, "count": {"$sum": 1}}}
+    ]
+
+    mp_result = await db.products.aggregate(pipeline_mp).to_list(1)
+    fbs_result = await db.products.aggregate(pipeline_fbs).to_list(1)
+    mgmt_result = await db.products.aggregate(pipeline_mgmt).to_list(1)
+
+    return {
+        "avg_marketplace_commission_pct": round(mp_result[0]["avg"], 2) if mp_result else 9.24,
+        "avg_fbs_fee": round(fbs_result[0]["avg"], 2) if fbs_result else 0.56,
+        "avg_management_cost": round(mgmt_result[0]["avg"], 2) if mgmt_result else 0.28,
+        "packaging_cost": 0.12,
+        "products_count": mp_result[0]["count"] if mp_result else 0,
+    }
+
+
+# --- Quick Calculate Endpoint ---
+
+class QuickCalculateRequest(BaseModel):
+    wholesale_price: float
+    vat_pct: float = 24.0
+    profit: float = 0.90
+    mp_pct: Optional[float] = None  # Override average if provided
+    fbs_fee: Optional[float] = None
+    mgmt_cost: Optional[float] = None
+
+@api_router.post("/quick-calculate")
+async def quick_calculate(req: QuickCalculateRequest):
+    """Quick calculation using averages from uploaded data."""
+    # Get averages if not overridden
+    if req.mp_pct is None or req.fbs_fee is None:
+        avg_data = await get_averages()
+        mp_pct = req.mp_pct if req.mp_pct is not None else avg_data["avg_marketplace_commission_pct"]
+        fbs_fee = req.fbs_fee if req.fbs_fee is not None else avg_data["avg_fbs_fee"]
+        mgmt_cost = req.mgmt_cost if req.mgmt_cost is not None else avg_data["avg_management_cost"]
+    else:
+        mp_pct = req.mp_pct
+        fbs_fee = req.fbs_fee
+        mgmt_cost = req.mgmt_cost if req.mgmt_cost is not None else 0.0
+
+    mp_decimal = mp_pct / 100.0
+    vat_decimal = req.vat_pct / 100.0
+    packaging = 0.12
+
+    # FBS
+    fbs_fixed = fbs_fee + packaging
+    fbs_final = calculate_price(req.wholesale_price, req.profit, fbs_fixed, mp_decimal, vat_decimal)
+    if fbs_final is None:
+        raise HTTPException(status_code=400, detail="Αδύνατος υπολογισμός")
+    fbs_breakdown = build_breakdown(fbs_final, req.wholesale_price, req.profit, fbs_fixed, mp_decimal, vat_decimal, "fbs_fee_plus_packaging")
+
+    # Marketplace
+    mp_fixed = mgmt_cost
+    mp_final = calculate_price(req.wholesale_price, req.profit, mp_fixed, mp_decimal, vat_decimal)
+    if mp_final is None:
+        raise HTTPException(status_code=400, detail="Αδύνατος υπολογισμός")
+    mp_breakdown = build_breakdown(mp_final, req.wholesale_price, req.profit, mp_fixed, mp_decimal, vat_decimal, "management_cost")
+
+    return {
+        "wholesale_price": req.wholesale_price,
+        "vat_pct": req.vat_pct,
+        "profit": req.profit,
+        "avg_mp_pct": mp_pct,
+        "avg_fbs_fee": fbs_fee,
+        "avg_mgmt_cost": mgmt_cost,
+        "packaging_cost": packaging,
+        "fbs_final_price": fbs_final,
+        "fbs_breakdown": fbs_breakdown,
+        "marketplace_final_price": mp_final,
+        "marketplace_breakdown": mp_breakdown,
+    }
+
+
 # --- Search Endpoint ---
 
 @api_router.get("/products/search")
