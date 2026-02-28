@@ -120,19 +120,9 @@ export default function Calculator() {
         </div>
       </div>
 
-      {/* Step 1: Upload */}
+      {/* Step 1: Search */}
       <Section
         number="1"
-        title="Φόρτωση Δεδομένων"
-        icon={<Upload size={16} />}
-        subtitle="Ανεβάστε τα Excel αρχεία από το Skroutz"
-      >
-        <ExcelUploader status={uploadStatus} onUploadComplete={refreshStatus} />
-      </Section>
-
-      {/* Step 2: Search */}
-      <Section
-        number="2"
         title="Αναζήτηση Προϊόντος"
         icon={<Search size={16} />}
         subtitle="Ψάξτε με όνομα ή barcode/EAN"
@@ -145,9 +135,9 @@ export default function Calculator() {
         />
       </Section>
 
-      {/* Step 3: Calculate */}
+      {/* Step 2: Calculate */}
       <Section
-        number="3"
+        number="2"
         title="Υπολογισμός Τιμής"
         icon={<CalcIcon size={16} />}
         subtitle="Βάλτε χονδρική τιμή και ρυθμίστε παραμέτρους"
@@ -179,10 +169,22 @@ export default function Calculator() {
         </div>
       )}
 
+      {/* Settings: Upload */}
+      <div className="mt-16 pt-8 border-t border-[var(--border-color)]">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--border-hover)] text-[var(--text-muted)] text-xs">
+            <Settings size={14} />
+          </span>
+          <h2 className="text-base font-semibold text-[var(--text-secondary)]">Φόρτωση Δεδομένων</h2>
+          <span className="text-xs text-[var(--text-muted)] hidden sm:inline">&mdash; Ανεβάστε τα Excel αρχεία από το Skroutz</span>
+        </div>
+        <ExcelUploader status={uploadStatus} onUploadComplete={refreshStatus} />
+      </div>
+
       {/* Footer */}
       <div className="mt-16 pt-6 border-t border-[var(--border-color)] text-center">
         <p className="text-xs text-[var(--text-muted)]">
-          Τύπος: Τελική Τιμή = (Χονδρική + Κέρδος + Fee) &divide; (1 - MP% - (1 - 1/(1+ΦΠΑ%)))
+          Τύπος: Τελική Τιμή = (Χονδρική + Κέρδος + Fee + Coins) &divide; (1 - MP% - Ads% - (1 - 1/(1+ΦΠΑ%)))
         </p>
       </div>
     </div>
