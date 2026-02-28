@@ -492,40 +492,6 @@ async def root():
     return {"message": "Skroutz Price Calculator API"}
 
 
-# --- All Products (for table view) ---
-
-@api_router.get("/products/all")
-async def get_all_products():
-    """Get all products sorted alphabetically by name."""
-    products = await db.products.find(
-        {},
-        {
-            "_id": 0,
-            "uid": 1,
-            "name": 1,
-            "fbs_name": 1,
-            "ean": 1,
-            "category": 1,
-            "fbs_category": 1,
-            "manufacturer": 1,
-            "fbs_manufacturer": 1,
-            "marketplace_commission_pct": 1,
-            "fbs_fee": 1,
-            "management_cost": 1,
-            "weight_kg": 1,
-            "current_price": 1,
-            "fbs_current_price": 1,
-        }
-    ).sort("name", 1).to_list(5000)
-    # Normalize names
-    for p in products:
-        if not p.get("name") and p.get("fbs_name"):
-            p["name"] = p["fbs_name"]
-        if not p.get("category") and p.get("fbs_category"):
-            p["category"] = p["fbs_category"]
-    return products
-
-
 # --- Reverse Calculate ---
 
 class ReverseCalculateRequest(BaseModel):
