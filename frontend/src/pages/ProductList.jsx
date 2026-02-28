@@ -25,6 +25,18 @@ export default function ProductList() {
   useEffect(() => {
     axios.get(`${API}/products/all`).then((r) => {
       setProducts(r.data);
+      // Pre-fill saved user settings
+      const wp = {};
+      const coins = {};
+      const ads = {};
+      for (const p of r.data) {
+        if (p.user_wholesale_price) wp[p.uid] = String(p.user_wholesale_price);
+        if (p.user_coins_quantity) coins[p.uid] = String(p.user_coins_quantity);
+        if (p.user_ads_enabled) ads[p.uid] = true;
+      }
+      setWholesalePrices(wp);
+      setCoinsMap(coins);
+      setAdEnabledMap(ads);
       setLoading(false);
     }).catch(() => { setLoading(false); toast.error("Σφάλμα φόρτωσης προϊόντων"); });
   }, []);
