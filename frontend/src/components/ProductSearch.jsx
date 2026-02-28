@@ -91,6 +91,9 @@ export default function ProductSearch({ onSelect, selectedProduct, disabled }) {
                 {selectedProduct.fbs_fee != null && (
                   <span className="text-xs text-[var(--accent-blue)] mono">FBS: {selectedProduct.fbs_fee}€</span>
                 )}
+                {selectedProduct.advertising_commission_pct != null && (
+                  <span className="text-xs text-[var(--accent-purple)] mono">Ads: {selectedProduct.advertising_commission_pct}%</span>
+                )}
               </div>
             </div>
           </div>
