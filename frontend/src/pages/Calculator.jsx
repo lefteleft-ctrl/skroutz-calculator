@@ -165,6 +165,17 @@ export default function Calculator() {
       {calcResult && (
         <div className="mt-8 fade-in">
           <PriceResults result={calcResult} />
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              data-testid="save-btn"
+              className="bg-[var(--accent-green)] hover:bg-green-600 text-white font-semibold px-6"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? "Αποθήκευση..." : "Αποθήκευση στη Λίστα"}
+            </Button>
+          </div>
         </div>
       )}
 
