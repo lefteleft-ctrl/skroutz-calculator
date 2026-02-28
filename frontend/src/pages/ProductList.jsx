@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Download, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Search, Loader2, Megaphone, Coins } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -18,6 +18,8 @@ export default function ProductList() {
   const [defaultProfit, setDefaultProfit] = useState("0.90");
   const [wholesalePrices, setWholesalePrices] = useState({});
   const [overridePrices, setOverridePrices] = useState({});
+  const [coinsMap, setCoinsMap] = useState({});
+  const [adEnabledMap, setAdEnabledMap] = useState({});
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -37,23 +39,28 @@ export default function ProductList() {
     );
   }, [products, filter]);
 
-  const calcFinal = useCallback((cost, mpPct, fbsFee) => {
+  // Forward calculation: wholesale → FBS final price
+  const calcFinal = useCallback((cost, mpPct, fbsFee, coinsVal, adPct) => {
     const profit = parseFloat(defaultProfit) || 0;
     const vat = parseFloat(vatPct) / 100;
     const mp = (mpPct || 0) / 100;
-    const fixed = (fbsFee || 0) + 0.12;
-    const denom = 1 - mp - (1 - 1 / (1 + vat));
+    const ad = (adPct || 0) / 100;
+    const fixed = (fbsFee || 0) + 0.12 + (coinsVal || 0);
+    const denom = 1 - mp - ad - (1 - 1 / (1 + vat));
     if (denom <= 0) return null;
     return (cost + profit + fixed) / denom;
   }, [vatPct, defaultProfit]);
 
-  const calcReverseProfit = useCallback((finalPrice, cost, mpPct, fbsFee) => {
+  // Reverse calculation: custom final price → profit
+  const calcReverseProfit = useCallback((finalPrice, cost, mpPct, fbsFee, coinsVal, adPct) => {
     const vat = parseFloat(vatPct) / 100;
     const mp = (mpPct || 0) / 100;
+    const ad = (adPct || 0) / 100;
     const commission = finalPrice * mp;
+    const adAmount = finalPrice * ad;
     const vatAmount = finalPrice * (1 - 1 / (1 + vat));
-    const fixed = (fbsFee || 0) + 0.12;
-    return finalPrice - commission - vatAmount - fixed - cost;
+    const fixed = (fbsFee || 0) + 0.12 + (coinsVal || 0);
+    return finalPrice - commission - adAmount - vatAmount - fixed - cost;
   }, [vatPct]);
 
   const setWholesale = (uid, val) => {
@@ -65,18 +72,32 @@ export default function ProductList() {
     setOverridePrices((prev) => ({ ...prev, [uid]: val }));
   };
 
+  const setCoins = (uid, val) => {
+    setCoinsMap((prev) => ({ ...prev, [uid]: val }));
+    setOverridePrices((prev) => { const n = { ...prev }; delete n[uid]; return n; });
+  };
+
+  const toggleAd = (uid, adPct) => {
+    setAdEnabledMap((prev) => ({ ...prev, [uid]: !prev[uid] }));
+    setOverridePrices((prev) => { const n = { ...prev }; delete n[uid]; return n; });
+  };
+
   const productsWithPrices = useMemo(() => {
     return filteredProducts.map((p) => {
       const wp = parseFloat(wholesalePrices[p.uid]);
       const hasWholesale = !isNaN(wp) && wp > 0;
-      const calcPrice = hasWholesale ? calcFinal(wp, p.marketplace_commission_pct, p.fbs_fee) : null;
+      const coins = parseFloat(coinsMap[p.uid]) || 0;
+      const adEnabled = !!adEnabledMap[p.uid];
+      const adPct = adEnabled ? (p.advertising_commission_pct || 0) : 0;
+
+      const calcPrice = hasWholesale ? calcFinal(wp, p.marketplace_commission_pct, p.fbs_fee, coins, adPct) : null;
 
       const overrideVal = parseFloat(overridePrices[p.uid]);
       const hasOverride = !isNaN(overrideVal) && overrideVal > 0;
 
       let reverseProfit = null;
       if (hasWholesale && hasOverride) {
-        reverseProfit = calcReverseProfit(overrideVal, wp, p.marketplace_commission_pct, p.fbs_fee);
+        reverseProfit = calcReverseProfit(overrideVal, wp, p.marketplace_commission_pct, p.fbs_fee, coins, adPct);
       }
 
       return {
@@ -85,9 +106,12 @@ export default function ProductList() {
         calculatedPrice: calcPrice ? Math.round(calcPrice * 100) / 100 : null,
         overridePrice: hasOverride ? overrideVal : null,
         reverseProfit: reverseProfit !== null ? Math.round(reverseProfit * 100) / 100 : null,
+        coins,
+        adEnabled,
+        adPct,
       };
     });
-  }, [filteredProducts, wholesalePrices, overridePrices, calcFinal, calcReverseProfit]);
+  }, [filteredProducts, wholesalePrices, overridePrices, coinsMap, adEnabledMap, calcFinal, calcReverseProfit]);
 
   const handleExport = async () => {
     const toExport = productsWithPrices.filter((p) => p.wholesalePrice);
@@ -131,7 +155,7 @@ export default function ProductList() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-6">
+    <div className="max-w-[1600px] mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -204,14 +228,20 @@ export default function ProductList() {
           <table className="w-full" data-testid="products-table">
             <thead>
               <tr className="bg-[var(--bg-card)] border-b border-[var(--border-color)]">
-                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[320px]">Προϊόν</th>
-                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[110px]">EAN</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[60px]">MP%</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[60px]">FBS€</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[110px]">Χονδρική (€)</th>
-                <th className="text-center text-xs font-medium text-[var(--accent-orange)] px-3 py-2.5 w-[90px]">FBS Τιμή</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[120px]">Δική σου Τιμή (€)</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[80px]">Κέρδος</th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 min-w-[250px]">Προϊόν</th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[100px]">EAN</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[50px]">MP%</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[50px]">FBS€</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[90px]">Χονδρική</th>
+                <th className="text-center text-xs font-medium text-yellow-500 px-3 py-2.5 w-[70px]" title="Coins σε €">
+                  <div className="flex items-center justify-center gap-1"><Coins size={12} />€</div>
+                </th>
+                <th className="text-center text-xs font-medium text-[var(--accent-purple)] px-3 py-2.5 w-[65px]" title="Διαφήμιση % — κλικ για ενεργοποίηση">
+                  <div className="flex items-center justify-center gap-1"><Megaphone size={12} />%</div>
+                </th>
+                <th className="text-center text-xs font-medium text-[var(--accent-orange)] px-3 py-2.5 w-[80px]">FBS Τιμή</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[100px]">Δική σου Τιμή</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[70px]">Κέρδος</th>
               </tr>
             </thead>
             <tbody>
@@ -221,8 +251,11 @@ export default function ProductList() {
                   product={p}
                   wholesaleValue={wholesalePrices[p.uid] || ""}
                   overrideValue={overridePrices[p.uid] || ""}
+                  coinsValue={coinsMap[p.uid] || ""}
                   onWholesaleChange={(val) => setWholesale(p.uid, val)}
                   onOverrideChange={(val) => setOverride(p.uid, val)}
+                  onCoinsChange={(val) => setCoins(p.uid, val)}
+                  onToggleAd={() => toggleAd(p.uid)}
                 />
               ))}
             </tbody>
@@ -233,14 +266,13 @@ export default function ProductList() {
   );
 }
 
-function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange, onOverrideChange }) {
+function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, onWholesaleChange, onOverrideChange, onCoinsChange, onToggleAd }) {
   const p = product;
   
   let profitDisplay = null;
   let profitColor = "text-[var(--text-muted)]";
   
   if (p.reverseProfit !== null) {
-    // User typed a custom price → show reverse profit
     profitDisplay = p.reverseProfit;
     profitColor = p.reverseProfit >= 0 ? "text-[var(--accent-green)]" : "text-red-400";
   }
@@ -248,18 +280,19 @@ function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange,
   return (
     <tr className="border-b border-[var(--border-color)] hover:bg-[var(--bg-card)] transition-colors">
       <td className="px-3 py-2">
-        <p className="text-xs text-[var(--text-primary)] truncate max-w-[300px]" title={p.name}>{p.name}</p>
+        <p className="text-xs text-[var(--text-primary)] truncate max-w-[240px]" title={p.name}>{p.name}</p>
         <span className="text-[10px] text-[var(--text-muted)]">{p.category}</span>
       </td>
       <td className="px-3 py-2">
-        <span className="text-xs mono text-[var(--text-secondary)]">{p.ean || "-"}</span>
+        <span className="text-[10px] mono text-[var(--text-secondary)]">{p.ean || "-"}</span>
       </td>
       <td className="px-3 py-2 text-center">
-        <span className="text-xs mono text-[var(--accent-orange)]">{p.marketplace_commission_pct != null ? `${p.marketplace_commission_pct}%` : "-"}</span>
+        <span className="text-xs mono text-[var(--accent-orange)]">{p.marketplace_commission_pct != null ? `${p.marketplace_commission_pct}` : "-"}</span>
       </td>
       <td className="px-3 py-2 text-center">
-        <span className="text-xs mono text-[var(--accent-blue)]">{p.fbs_fee != null ? `${p.fbs_fee}€` : "-"}</span>
+        <span className="text-xs mono text-[var(--accent-blue)]">{p.fbs_fee != null ? `${p.fbs_fee}` : "-"}</span>
       </td>
+      {/* Wholesale price */}
       <td className="px-3 py-2">
         <input
           type="number"
@@ -272,6 +305,39 @@ function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange,
           data-testid={`wholesale-${p.uid}`}
         />
       </td>
+      {/* Coins */}
+      <td className="px-3 py-2">
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={coinsValue}
+          onChange={(e) => onCoinsChange(e.target.value)}
+          placeholder="0"
+          className="w-full px-2 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-yellow-500 focus:border-yellow-500 focus:outline-none"
+          data-testid={`coins-${p.uid}`}
+        />
+      </td>
+      {/* Advertising toggle */}
+      <td className="px-3 py-2 text-center">
+        {p.advertising_commission_pct ? (
+          <button
+            onClick={onToggleAd}
+            className={`px-2 py-1 text-xs mono rounded transition-all ${
+              p.adEnabled
+                ? "bg-[var(--accent-purple)] text-white font-semibold"
+                : "bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--accent-purple)]"
+            }`}
+            title={p.adEnabled ? `Διαφήμιση ενεργή: ${p.advertising_commission_pct}%` : `Κλικ για διαφήμιση ${p.advertising_commission_pct}%`}
+            data-testid={`ad-toggle-${p.uid}`}
+          >
+            {p.advertising_commission_pct}
+          </button>
+        ) : (
+          <span className="text-xs text-[var(--text-muted)]">-</span>
+        )}
+      </td>
+      {/* FBS calculated price */}
       <td className="px-3 py-2 text-center">
         {p.calculatedPrice ? (
           <span className="text-xs mono font-semibold text-[var(--accent-orange)]">{p.calculatedPrice.toFixed(2)}€</span>
@@ -279,6 +345,7 @@ function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange,
           <span className="text-xs text-[var(--text-muted)]">-</span>
         )}
       </td>
+      {/* Custom override price */}
       <td className="px-3 py-2">
         <input
           type="number"
@@ -292,6 +359,7 @@ function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange,
           data-testid={`override-${p.uid}`}
         />
       </td>
+      {/* Profit */}
       <td className="px-3 py-2 text-center">
         {profitDisplay !== null ? (
           <span className={`text-xs mono font-semibold ${profitColor}`}>
