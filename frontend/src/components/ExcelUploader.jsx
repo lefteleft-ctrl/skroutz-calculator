@@ -1,26 +1,28 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { Upload, CheckCircle, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Upload, CheckCircle, FileSpreadsheet, Loader2, DollarSign } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function ExcelUploader({ status, onUploadComplete }) {
-  const [uploading, setUploading] = useState({ listed: false, fbs: false });
+  const [uploading, setUploading] = useState({ listed: false, fbs: false, wholesale: false });
   const listedRef = useRef(null);
   const fbsRef = useRef(null);
+  const wholesaleRef = useRef(null);
 
   useEffect(() => {
     onUploadComplete();
   }, [onUploadComplete]);
 
   const handleUpload = async (file, type) => {
-    const key = type === "report-listed" ? "listed" : "fbs";
+    const key = type === "report-listed" ? "listed" : type === "fbs-products" ? "fbs" : "wholesale";
     setUploading((prev) => ({ ...prev, [key]: true }));
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await axios.post(`${API}/upload/${type}`, formData);
+      const endpoint = type === "wholesale" ? "upload/wholesale" : `upload/${type}`;
+      const res = await axios.post(`${API}/${endpoint}`, formData);
       toast.success(res.data.message);
       onUploadComplete();
     } catch (e) {
@@ -32,7 +34,7 @@ export default function ExcelUploader({ status, onUploadComplete }) {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <DropZone
         inputRef={listedRef}
         label="Report Listed"
@@ -50,6 +52,16 @@ export default function ExcelUploader({ status, onUploadComplete }) {
         count={status.fbs_products_count}
         loading={uploading.fbs}
         onFile={(f) => handleUpload(f, "fbs-products")}
+      />
+      <DropZone
+        inputRef={wholesaleRef}
+        label="Χονδρικές Τιμές"
+        description="Τιμές αγοράς ανά barcode"
+        loaded={(status.wholesale_count || 0) > 0}
+        count={status.wholesale_count || 0}
+        loading={uploading.wholesale}
+        onFile={(f) => handleUpload(f, "wholesale")}
+        accent
       />
     </div>
   );
