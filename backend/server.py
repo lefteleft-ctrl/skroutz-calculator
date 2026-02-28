@@ -395,7 +395,7 @@ async def search_products(q: str = Query(..., min_length=1)):
 async def get_all_products():
     """Get all products sorted alphabetically by name."""
     products = await db.products.find(
-        {},
+        {"name": {"$exists": True, "$ne": None}},
         {
             "_id": 0,
             "uid": 1,
