@@ -39,20 +39,23 @@ export default function ProductList() {
     );
   }, [products, filter]);
 
+  const COIN_COST = 0.0015; // € per coin
+
   // Forward calculation: wholesale → FBS final price
-  const calcFinal = useCallback((cost, mpPct, fbsFee, coinsVal, adPct) => {
+  const calcFinal = useCallback((cost, mpPct, fbsFee, coinsQty, adPct) => {
     const profit = parseFloat(defaultProfit) || 0;
     const vat = parseFloat(vatPct) / 100;
     const mp = (mpPct || 0) / 100;
     const ad = (adPct || 0) / 100;
-    const fixed = (fbsFee || 0) + 0.12 + (coinsVal || 0);
+    const coinsEur = (coinsQty || 0) * COIN_COST;
+    const fixed = (fbsFee || 0) + 0.12 + coinsEur;
     const denom = 1 - mp - ad - (1 - 1 / (1 + vat));
     if (denom <= 0) return null;
     return (cost + profit + fixed) / denom;
   }, [vatPct, defaultProfit]);
 
   // Reverse calculation: custom final price → profit
-  const calcReverseProfit = useCallback((finalPrice, cost, mpPct, fbsFee, coinsVal, adPct) => {
+  const calcReverseProfit = useCallback((finalPrice, cost, mpPct, fbsFee, coinsQty, adPct) => {
     const vat = parseFloat(vatPct) / 100;
     const mp = (mpPct || 0) / 100;
     const ad = (adPct || 0) / 100;
