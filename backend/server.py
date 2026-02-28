@@ -457,26 +457,39 @@ async def calculate_price_endpoint(req: CalculateRequest):
         raise HTTPException(status_code=400, detail="Δεν βρέθηκε ποσοστό προμήθειας Marketplace. Ανεβάστε το report_listed Excel.")
 
     fbs_fee = product.get("fbs_fee", 0.0) or 0.0
-    packaging_cost = 0.12  # Fixed packaging cost per Skroutz rules
+    packaging_cost = 0.12
+    ads_pct = product.get("advertising_commission_pct", 0.0) or 0.0
 
     mp_decimal = mp_pct / 100.0
     vat_decimal = req.vat_pct / 100.0
+    ads_decimal = (ads_pct / 100.0) if req.ads_enabled else 0.0
+    coins_eur = req.coins_quantity * COIN_COST
 
-    # FBS calculation: fixed fee = FBS fee + packaging cost
-    fbs_fixed = fbs_fee + packaging_cost
-    fbs_final = calculate_price(req.wholesale_price, req.profit, fbs_fixed, mp_decimal, vat_decimal)
+    # FBS calculation
+    fbs_fixed = fbs_fee + packaging_cost + coins_eur
+    fbs_final = calculate_price(req.wholesale_price, req.profit, fbs_fixed, mp_decimal, vat_decimal, ads_decimal)
     if fbs_final is None:
         raise HTTPException(status_code=400, detail="Αδύνατος υπολογισμός - ελέγξτε τις παραμέτρους")
+    fbs_breakdown = build_breakdown(fbs_final, req.wholesale_price, req.profit, fbs_fixed, mp_decimal, vat_decimal, "fbs_fee_plus_packaging", ads_decimal)
 
-    fbs_breakdown = build_breakdown(fbs_final, req.wholesale_price, req.profit, fbs_fixed, mp_decimal, vat_decimal, "fbs_fee_plus_packaging")
-
-    # Marketplace calculation: fixed fee = management cost
-    mp_fixed = req.mgmt_cost
-    mp_final = calculate_price(req.wholesale_price, req.profit, mp_fixed, mp_decimal, vat_decimal)
+    # Marketplace calculation
+    mp_fixed = req.mgmt_cost + coins_eur
+    mp_final = calculate_price(req.wholesale_price, req.profit, mp_fixed, mp_decimal, vat_decimal, ads_decimal)
     if mp_final is None:
         raise HTTPException(status_code=400, detail="Αδύνατος υπολογισμός - ελέγξτε τις παραμέτρους")
+    mp_breakdown = build_breakdown(mp_final, req.wholesale_price, req.profit, mp_fixed, mp_decimal, vat_decimal, "management_cost", ads_decimal)
 
-    mp_breakdown = build_breakdown(mp_final, req.wholesale_price, req.profit, mp_fixed, mp_decimal, vat_decimal, "management_cost")
+    # Save user settings for this product
+    await db.products.update_one(
+        {"uid": req.uid},
+        {"$set": {
+            "user_wholesale_price": req.wholesale_price,
+            "user_coins_quantity": req.coins_quantity,
+            "user_ads_enabled": req.ads_enabled,
+            "user_profit": req.profit,
+            "user_vat_pct": req.vat_pct,
+        }}
+    )
 
     return CalculateResponse(
         product_name=product.get("name") or product.get("fbs_name", ""),
@@ -487,6 +500,10 @@ async def calculate_price_endpoint(req: CalculateRequest):
         vat_pct=req.vat_pct,
         profit=req.profit,
         marketplace_commission_pct=mp_pct,
+        advertising_commission_pct=ads_pct,
+        ads_enabled=req.ads_enabled,
+        coins_quantity=req.coins_quantity,
+        coins_eur=round(coins_eur, 4),
         fbs_fee=fbs_fee,
         mgmt_cost=req.mgmt_cost,
         packaging_cost=packaging_cost,
