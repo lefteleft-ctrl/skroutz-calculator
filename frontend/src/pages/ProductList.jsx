@@ -1,0 +1,302 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import axios from "axios";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Download, Search, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+export default function ProductList() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("");
+  const [vatPct, setVatPct] = useState("24");
+  const [defaultProfit, setDefaultProfit] = useState("0.90");
+  const [wholesalePrices, setWholesalePrices] = useState({});
+  const [overridePrices, setOverridePrices] = useState({});
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API}/products/all`).then((r) => {
+      setProducts(r.data);
+      setLoading(false);
+    }).catch(() => { setLoading(false); toast.error("Σφάλμα φόρτωσης προϊόντων"); });
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    if (!filter) return products;
+    const q = filter.toLowerCase();
+    return products.filter((p) =>
+      (p.name || "").toLowerCase().includes(q) ||
+      (p.ean || "").includes(q) ||
+      (p.uid || "").includes(q)
+    );
+  }, [products, filter]);
+
+  const calcFinal = useCallback((cost, mpPct, fbsFee) => {
+    const profit = parseFloat(defaultProfit) || 0;
+    const vat = parseFloat(vatPct) / 100;
+    const mp = (mpPct || 0) / 100;
+    const fixed = (fbsFee || 0) + 0.12;
+    const denom = 1 - mp - (1 - 1 / (1 + vat));
+    if (denom <= 0) return null;
+    return (cost + profit + fixed) / denom;
+  }, [vatPct, defaultProfit]);
+
+  const calcReverseProfit = useCallback((finalPrice, cost, mpPct, fbsFee) => {
+    const vat = parseFloat(vatPct) / 100;
+    const mp = (mpPct || 0) / 100;
+    const commission = finalPrice * mp;
+    const vatAmount = finalPrice * (1 - 1 / (1 + vat));
+    const fixed = (fbsFee || 0) + 0.12;
+    return finalPrice - commission - vatAmount - fixed - cost;
+  }, [vatPct]);
+
+  const setWholesale = (uid, val) => {
+    setWholesalePrices((prev) => ({ ...prev, [uid]: val }));
+    setOverridePrices((prev) => { const n = { ...prev }; delete n[uid]; return n; });
+  };
+
+  const setOverride = (uid, val) => {
+    setOverridePrices((prev) => ({ ...prev, [uid]: val }));
+  };
+
+  const productsWithPrices = useMemo(() => {
+    return filteredProducts.map((p) => {
+      const wp = parseFloat(wholesalePrices[p.uid]);
+      const hasWholesale = !isNaN(wp) && wp > 0;
+      const calcPrice = hasWholesale ? calcFinal(wp, p.marketplace_commission_pct, p.fbs_fee) : null;
+
+      const overrideVal = parseFloat(overridePrices[p.uid]);
+      const hasOverride = !isNaN(overrideVal) && overrideVal > 0;
+
+      let reverseProfit = null;
+      if (hasWholesale && hasOverride) {
+        reverseProfit = calcReverseProfit(overrideVal, wp, p.marketplace_commission_pct, p.fbs_fee);
+      }
+
+      return {
+        ...p,
+        wholesalePrice: hasWholesale ? wp : null,
+        calculatedPrice: calcPrice ? Math.round(calcPrice * 100) / 100 : null,
+        overridePrice: hasOverride ? overrideVal : null,
+        reverseProfit: reverseProfit !== null ? Math.round(reverseProfit * 100) / 100 : null,
+      };
+    });
+  }, [filteredProducts, wholesalePrices, overridePrices, calcFinal, calcReverseProfit]);
+
+  const handleExport = async () => {
+    const toExport = productsWithPrices.filter((p) => p.wholesalePrice);
+    if (toExport.length === 0) {
+      toast.error("Βάλτε χονδρικές τιμές πρώτα");
+      return;
+    }
+    setExporting(true);
+    try {
+      const res = await axios.post(`${API}/export-excel`, {
+        products: toExport.map((p) => ({ uid: p.uid, wholesale_price: p.wholesalePrice })),
+        vat_pct: parseFloat(vatPct),
+        profit: parseFloat(defaultProfit) || 0,
+        mgmt_cost: 0,
+      }, { responseType: "blob" });
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "skroutz_pricing.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Εξαγωγή ${toExport.length} προϊόντων σε Excel`);
+    } catch (e) {
+      toast.error("Σφάλμα εξαγωγής");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const filledCount = Object.values(wholesalePrices).filter((v) => parseFloat(v) > 0).length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 text-[var(--accent-orange)] animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-[1400px] mx-auto px-4 py-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Link to="/" className="p-2 rounded-lg hover:bg-[var(--bg-card)] transition-colors" data-testid="back-btn">
+            <ArrowLeft size={20} className="text-[var(--text-secondary)]" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Λίστα Προϊόντων</h1>
+            <p className="text-xs text-[var(--text-muted)]">{products.length} προϊόντα αλφαβητικά</p>
+          </div>
+        </div>
+        <Button
+          onClick={handleExport}
+          disabled={exporting || filledCount === 0}
+          className="bg-[var(--accent-green)] hover:bg-green-600 text-white"
+          data-testid="export-btn"
+        >
+          {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+          Export Excel {filledCount > 0 && `(${filledCount})`}
+        </Button>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-end gap-4 mb-4 p-4 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)]">
+        <div className="flex-1">
+          <Label className="text-xs text-[var(--text-secondary)] mb-1.5 block">Φίλτρο</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+            <Input
+              data-testid="product-filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Αναζήτηση ονόματος, EAN, UID..."
+              className="pl-10 bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)]"
+            />
+          </div>
+        </div>
+        <div className="w-24">
+          <Label className="text-xs text-[var(--text-secondary)] mb-1.5 block">ΦΠΑ</Label>
+          <Select value={vatPct} onValueChange={setVatPct}>
+            <SelectTrigger className="bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)] mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-[var(--bg-card)] border-[var(--border-color)]">
+              <SelectItem value="24">24%</SelectItem>
+              <SelectItem value="13">13%</SelectItem>
+              <SelectItem value="6">6%</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-28">
+          <Label className="text-xs text-[var(--text-secondary)] mb-1.5 block">Κέρδος (€)</Label>
+          <Input
+            data-testid="default-profit"
+            type="number"
+            step="0.01"
+            value={defaultProfit}
+            onChange={(e) => setDefaultProfit(e.target.value)}
+            className="bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)] mono"
+          />
+        </div>
+        <div className="text-xs text-[var(--text-muted)] pb-2">
+          {filteredProducts.length} / {products.length}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border border-[var(--border-color)] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full" data-testid="products-table">
+            <thead>
+              <tr className="bg-[var(--bg-card)] border-b border-[var(--border-color)]">
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[320px]">Προϊόν</th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[110px]">EAN</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[60px]">MP%</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[60px]">FBS€</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[110px]">Χονδρική (€)</th>
+                <th className="text-center text-xs font-medium text-[var(--accent-orange)] px-3 py-2.5 w-[90px]">FBS Τιμή</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[120px]">Δική σου Τιμή (€)</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[80px]">Κέρδος</th>
+              </tr>
+            </thead>
+            <tbody>
+              {productsWithPrices.map((p) => (
+                <ProductRow
+                  key={p.uid}
+                  product={p}
+                  wholesaleValue={wholesalePrices[p.uid] || ""}
+                  overrideValue={overridePrices[p.uid] || ""}
+                  onWholesaleChange={(val) => setWholesale(p.uid, val)}
+                  onOverrideChange={(val) => setOverride(p.uid, val)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange, onOverrideChange }) {
+  const p = product;
+  const profitColor = p.reverseProfit !== null
+    ? p.reverseProfit >= 0 ? "text-[var(--accent-green)]" : "text-red-400"
+    : "text-[var(--text-muted)]";
+
+  return (
+    <tr className="border-b border-[var(--border-color)] hover:bg-[var(--bg-card)] transition-colors">
+      <td className="px-3 py-2">
+        <p className="text-xs text-[var(--text-primary)] truncate max-w-[300px]" title={p.name}>{p.name}</p>
+        <span className="text-[10px] text-[var(--text-muted)]">{p.category}</span>
+      </td>
+      <td className="px-3 py-2">
+        <span className="text-xs mono text-[var(--text-secondary)]">{p.ean || "-"}</span>
+      </td>
+      <td className="px-3 py-2 text-center">
+        <span className="text-xs mono text-[var(--accent-orange)]">{p.marketplace_commission_pct || "-"}%</span>
+      </td>
+      <td className="px-3 py-2 text-center">
+        <span className="text-xs mono text-[var(--accent-blue)]">{p.fbs_fee != null ? `${p.fbs_fee}€` : "-"}</span>
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={wholesaleValue}
+          onChange={(e) => onWholesaleChange(e.target.value)}
+          placeholder="0.00"
+          className="w-full px-2 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] focus:border-[var(--accent-orange)] focus:outline-none"
+          data-testid={`wholesale-${p.uid}`}
+        />
+      </td>
+      <td className="px-3 py-2 text-center">
+        {p.calculatedPrice ? (
+          <span className="text-xs mono font-semibold text-[var(--accent-orange)]">{p.calculatedPrice.toFixed(2)}€</span>
+        ) : (
+          <span className="text-xs text-[var(--text-muted)]">-</span>
+        )}
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={overrideValue}
+          onChange={(e) => onOverrideChange(e.target.value)}
+          placeholder={p.calculatedPrice ? p.calculatedPrice.toFixed(2) : "-"}
+          disabled={!p.calculatedPrice}
+          className="w-full px-2 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] focus:border-[var(--accent-purple)] focus:outline-none disabled:opacity-30"
+          data-testid={`override-${p.uid}`}
+        />
+      </td>
+      <td className="px-3 py-2 text-center">
+        {p.reverseProfit !== null ? (
+          <span className={`text-xs mono font-semibold ${profitColor}`}>
+            {p.reverseProfit >= 0 ? "+" : ""}{p.reverseProfit.toFixed(2)}€
+          </span>
+        ) : p.calculatedPrice ? (
+          <span className="text-xs mono text-[var(--accent-green)]">+{(parseFloat(product.calculatedPrice) ? (parseFloat(product.calculatedPrice) - parseFloat(product.calculatedPrice) * (product.marketplace_commission_pct || 0) / 100 - parseFloat(product.calculatedPrice) * (1 - 1/(1 + parseFloat("0.24"))) - (product.fbs_fee || 0) - 0.12 - (product.wholesalePrice || 0)).toFixed(2) : "-")}€</span>
+        ) : (
+          <span className="text-xs text-[var(--text-muted)]">-</span>
+        )}
+      </td>
+    </tr>
+  );
+}
