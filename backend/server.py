@@ -424,6 +424,11 @@ async def get_all_products():
             "weight_kg": 1,
             "current_price": 1,
             "fbs_current_price": 1,
+            "user_wholesale_price": 1,
+            "user_coins_quantity": 1,
+            "user_ads_enabled": 1,
+            "user_profit": 1,
+            "user_vat_pct": 1,
         }
     ).sort("name", 1).to_list(5000)
     for p in products:
