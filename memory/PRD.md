@@ -1,60 +1,67 @@
 # Skroutz Price Calculator - PRD
 
 ## Original Problem Statement
-Build a price calculator for the Skroutz e-commerce platform that calculates final selling prices based on wholesale cost, commissions, fees, VAT, and desired profit margin. The app serves a Greek pharmacy owner selling through Skroutz Marketplace and FBS (Fulfilled by Skroutz).
+Comprehensive price calculator for the Skroutz e-commerce platform handling:
+- Skroutz Marketplace pricing
+- Skroutz Hub (Fulfilled by Skroutz - FBS) pricing
+- Variables: wholesale cost, VAT, profit, commissions, FBS fees, packaging, advertising, Coins
 
-## User Persona
-- Greek pharmacy owner selling products on Skroutz
-- Needs to calculate optimal selling prices to maintain profitability
-- Works with two Skroutz Excel exports: report_listed (commissions) and fbs_products_active (FBS fees)
+## User Language
+Greek (Ελληνικά)
 
 ## Core Requirements
-1. Upload 2 Excel files from Skroutz (report_listed + fbs_products_active)
-2. Search products by name or EAN barcode
-3. Input wholesale price, VAT (24%/13%/6%), profit target (default 0.90€), management cost
-4. Calculate and display final selling prices for BOTH FBS and Marketplace
-5. Show detailed cost breakdown for each channel
+1. Upload Excel files with Skroutz fee structures and product data
+2. Upload wholesale prices Excel file for bulk price population
+3. Quick Calculator with average fee values
+4. Product Search by name/barcode
+5. Detailed calculation page per product
+6. Interactive Product List with reverse calculation, Coins/Ads, export
+7. Save/persist settings per product
 
-## Pricing Formula (Verified with User)
-```
-Final Price = (Wholesale + Profit + Fixed Fee) / (1 - MP% - (1 - 1/(1+VAT%)))
-```
-- Commission is calculated on GROSS price (with VAT) - this is how Skroutz works
-- FBS: Fixed Fee = FBS fee + packaging (0.12€)
-- Marketplace: Fixed Fee = Management cost (default 0€)
+## Architecture
+- **Backend**: FastAPI (server.py) + MongoDB
+- **Frontend**: React + TailwindCSS + Shadcn/UI
+- **Database**: MongoDB `products` collection
 
-## Implemented Features (Feb 2026)
-- [x] Excel upload & parsing (report_listed + fbs_products_active)
-- [x] Product search by name or EAN barcode
-- [x] Price calculation with correct Skroutz formula
-- [x] Dual results: FBS and Marketplace final prices
-- [x] Adjustable VAT (24%/13%/6%), profit, management cost
-- [x] Detailed cost breakdown display
-- [x] **Quick Calculator** - instant pricing with average values from uploaded data
-- [x] **Product List** - all 588 products alphabetically with inline wholesale price input
-- [x] **Reverse Calculation** - override final price to see resulting profit
-- [x] **Coins support** - per-product coins amount added to fixed costs
-- [x] **Advertising support** - toggle per-product ad %, auto-loaded from Skroutz Excel data
-- [x] **Excel Export** - download full pricing breakdown as Excel file
-- [x] Dark theme UI in Greek language
+## Pricing Formula
+`Final Price = (Wholesale + Profit + FixedFees) / (1 - Marketplace% - Ads% - (1 - 1/(1+VAT%)))`
 
-## Tech Stack
-- Backend: FastAPI + MongoDB (Motor) + openpyxl
-- Frontend: React + Tailwind CSS + Shadcn/UI
-- Data: Uploaded Excel files parsed and stored in MongoDB
+## Key API Endpoints
+- `POST /api/upload/report-listed` - Marketplace data
+- `POST /api/upload/fbs-products` - FBS data
+- `POST /api/upload/wholesale` - Wholesale prices (by EAN)
+- `GET /api/upload-status` - Upload counts
+- `GET /api/products/search?q=` - Product search
+- `POST /api/calculate` - Price calculation
+- `POST /api/save-product-settings` - Save settings
+- `GET /api/products/all` - All products for table
+- `POST /api/reverse-calculate` - Reverse profit calc
+- `POST /api/export-excel` - Excel export
+- `POST /api/quick-calculate` - Quick calc with averages
 
-## API Endpoints
-- POST /api/upload/report-listed - Upload Marketplace commissions Excel
-- POST /api/upload/fbs-products - Upload FBS products Excel
-- GET /api/upload-status - Check loaded data counts
-- GET /api/products/search?q= - Search products
-- GET /api/products/{uid} - Get single product
-- POST /api/calculate - Calculate prices
+## What's Been Implemented
+- [x] Full FastAPI backend with all endpoints
+- [x] Excel upload for Marketplace data (report_listed)
+- [x] Excel upload for FBS data (fbs_products)
+- [x] **Bulk wholesale price upload via Excel (matched by EAN) - Feb 2026**
+- [x] Quick Calculator with averages
+- [x] Product Search
+- [x] Detailed price calculator per product
+- [x] Interactive Product List table
+- [x] Reverse calculation
+- [x] Coins & Advertising cost integration
+- [x] Separate Calculate/Save workflow
+- [x] Excel export
+- [x] Settings persistence per product
+
+## Completed - Feb 28, 2026
+- Implemented `POST /api/upload/wholesale` endpoint
+- Parses multi-sheet Excel files (56 sheets, ~1460 products)
+- Matches products by EAN barcode (518/589 matched)
+- Added third DropZone "Χονδρικές Τιμές" in ExcelUploader
+- Updated upload-status to include wholesale_count
+- All tests passed (36/36 backend, 100% frontend)
 
 ## Backlog
-- P1: Batch/bulk calculation for all products at once
-- P1: Export results to Excel
-- P2: Include Coins in calculation
-- P2: Dynamic Margin % (instead of fixed € amount)
-- P2: Price comparison with current Skroutz price
-- P3: Historical price tracking
+- Refactor server.py into separate routes/services/models files
+- No other pending tasks
