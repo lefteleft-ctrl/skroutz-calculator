@@ -407,6 +407,7 @@ async def get_all_products():
             "manufacturer": 1,
             "fbs_manufacturer": 1,
             "marketplace_commission_pct": 1,
+            "advertising_commission_pct": 1,
             "fbs_fee": 1,
             "management_cost": 1,
             "weight_kg": 1,
