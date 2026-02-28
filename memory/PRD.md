@@ -33,6 +33,8 @@ Final Price = (Wholesale + Profit + Fixed Fee) / (1 - MP% - (1 - 1/(1+VAT%)))
 - [x] **Quick Calculator** - instant pricing with average values from uploaded data
 - [x] **Product List** - all 588 products alphabetically with inline wholesale price input
 - [x] **Reverse Calculation** - override final price to see resulting profit
+- [x] **Coins support** - per-product coins amount added to fixed costs
+- [x] **Advertising support** - toggle per-product ad %, auto-loaded from Skroutz Excel data
 - [x] **Excel Export** - download full pricing breakdown as Excel file
 - [x] Dark theme UI in Greek language
 
