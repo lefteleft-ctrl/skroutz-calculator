@@ -67,7 +67,7 @@ export default function ExcelUploader({ status, onUploadComplete }) {
   );
 }
 
-function DropZone({ inputRef, label, description, loaded, count, loading, onFile }) {
+function DropZone({ inputRef, label, description, loaded, count, loading, onFile, accent }) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = (e) => {
@@ -84,7 +84,7 @@ function DropZone({ inputRef, label, description, loaded, count, loading, onFile
 
   return (
     <div
-      className={`dropzone ${dragOver ? "active" : ""} ${loaded ? "loaded" : ""}`}
+      className={`dropzone ${dragOver ? "active" : ""} ${loaded ? "loaded" : ""} ${accent ? "accent" : ""}`}
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
@@ -107,13 +107,17 @@ function DropZone({ inputRef, label, description, loaded, count, loading, onFile
         <div className="flex flex-col items-center gap-2">
           <CheckCircle className="w-8 h-8 text-[var(--accent-green)]" />
           <span className="text-sm font-medium text-[var(--accent-green)]">{label}</span>
-          <span className="text-xs text-[var(--text-muted)]">{count} προϊόντα φορτώθηκαν</span>
+          <span className="text-xs text-[var(--text-muted)]">{count} προϊόντα ενημερώθηκαν</span>
           <span className="text-xs text-[var(--text-muted)] mt-1">Κλικ για ενημέρωση</span>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2">
-          <FileSpreadsheet className="w-8 h-8 text-[var(--text-muted)]" />
-          <span className="text-sm font-medium text-[var(--text-secondary)]">{label}</span>
+          {accent ? (
+            <DollarSign className="w-8 h-8 text-[var(--accent-orange)]" />
+          ) : (
+            <FileSpreadsheet className="w-8 h-8 text-[var(--text-muted)]" />
+          )}
+          <span className={`text-sm font-medium ${accent ? "text-[var(--accent-orange)]" : "text-[var(--text-secondary)]"}`}>{label}</span>
           <span className="text-xs text-[var(--text-muted)]">{description}</span>
           <span className="text-xs text-[var(--text-muted)] mt-1">Σύρετε ή κάντε κλικ</span>
         </div>
