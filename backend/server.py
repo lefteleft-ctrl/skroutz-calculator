@@ -116,11 +116,12 @@ def calculate_price(cost, profit, fixed_fee, mp_pct_decimal, vat_pct_decimal, ad
     return round(final_price, 2)
 
 
-def build_breakdown(final_price, cost, profit, fixed_fee, mp_pct_decimal, vat_pct_decimal, fee_label):
+def build_breakdown(final_price, cost, profit, fixed_fee, mp_pct_decimal, vat_pct_decimal, fee_label, ads_pct_decimal=0.0):
     """Build a detailed cost breakdown."""
     commission_amount = round(final_price * mp_pct_decimal, 2)
+    ads_amount = round(final_price * ads_pct_decimal, 2)
     vat_amount = round(final_price * (1 - 1 / (1 + vat_pct_decimal)), 2)
-    net_after_all = round(final_price - commission_amount - vat_amount - fixed_fee, 2)
+    net_after_all = round(final_price - commission_amount - ads_amount - vat_amount - fixed_fee, 2)
     real_profit = round(net_after_all - cost, 2)
     return {
         "final_price": final_price,
@@ -129,6 +130,8 @@ def build_breakdown(final_price, cost, profit, fixed_fee, mp_pct_decimal, vat_pc
         fee_label: fixed_fee,
         "commission_pct": round(mp_pct_decimal * 100, 2),
         "commission_amount": commission_amount,
+        "ads_pct": round(ads_pct_decimal * 100, 2),
+        "ads_amount": ads_amount,
         "vat_pct": round(vat_pct_decimal * 100, 2),
         "vat_amount": vat_amount,
         "net_to_store": net_after_all,
