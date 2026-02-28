@@ -267,7 +267,7 @@ function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange,
           min="0"
           value={wholesaleValue}
           onChange={(e) => onWholesaleChange(e.target.value)}
-          placeholder="0.00"
+          placeholder="—"
           className="w-full px-2 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] focus:border-[var(--accent-orange)] focus:outline-none"
           data-testid={`wholesale-${p.uid}`}
         />
