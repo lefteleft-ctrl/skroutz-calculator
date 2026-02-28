@@ -1,15 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Loader2 } from "lucide-react";
+import { Calculator, Loader2, Coins, Megaphone } from "lucide-react";
 
 export default function PriceCalculator({ product, onCalculate, calculating, disabled }) {
   const [wholesalePrice, setWholesalePrice] = useState("");
   const [vatPct, setVatPct] = useState("24");
   const [profit, setProfit] = useState("0.90");
   const [mgmtCost, setMgmtCost] = useState("0");
+  const [coinsQty, setCoinsQty] = useState("0");
+  const [adsEnabled, setAdsEnabled] = useState(false);
+
+  // Reset when product changes
+  useEffect(() => {
+    setAdsEnabled(false);
+    setCoinsQty("0");
+  }, [product?.uid]);
+
+  const adsPct = product?.advertising_commission_pct || 0;
+  const coinsEur = (parseInt(coinsQty) || 0) * 0.0015;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -20,6 +31,8 @@ export default function PriceCalculator({ product, onCalculate, calculating, dis
       vatPct: parseFloat(vatPct),
       profit: parseFloat(profit) || 0,
       mgmtCost: parseFloat(mgmtCost) || 0,
+      coinsQuantity: parseInt(coinsQty) || 0,
+      adsEnabled,
     });
   };
 
@@ -33,11 +46,11 @@ export default function PriceCalculator({ product, onCalculate, calculating, dis
 
   return (
     <form onSubmit={handleSubmit} className="p-5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)]">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
         {/* Wholesale Price */}
-        <div className="col-span-2 sm:col-span-1">
+        <div>
           <Label htmlFor="wholesale" className="text-xs text-[var(--text-secondary)] mb-1.5 block">
-            Χονδρική Τιμή (€)
+            Χονδρική (€)
           </Label>
           <Input
             id="wholesale"
@@ -55,9 +68,7 @@ export default function PriceCalculator({ product, onCalculate, calculating, dis
 
         {/* VAT */}
         <div>
-          <Label htmlFor="vat" className="text-xs text-[var(--text-secondary)] mb-1.5 block">
-            ΦΠΑ %
-          </Label>
+          <Label className="text-xs text-[var(--text-secondary)] mb-1.5 block">ΦΠΑ</Label>
           <Select value={vatPct} onValueChange={setVatPct}>
             <SelectTrigger data-testid="vat-select" className="bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)] mono">
               <SelectValue />
@@ -72,11 +83,8 @@ export default function PriceCalculator({ product, onCalculate, calculating, dis
 
         {/* Profit */}
         <div>
-          <Label htmlFor="profit" className="text-xs text-[var(--text-secondary)] mb-1.5 block">
-            Κέρδος (€)
-          </Label>
+          <Label className="text-xs text-[var(--text-secondary)] mb-1.5 block">Κέρδος (€)</Label>
           <Input
-            id="profit"
             data-testid="profit-input"
             type="number"
             step="0.01"
@@ -87,13 +95,53 @@ export default function PriceCalculator({ product, onCalculate, calculating, dis
           />
         </div>
 
-        {/* Management Cost */}
+        {/* Coins */}
         <div>
-          <Label htmlFor="mgmt" className="text-xs text-[var(--text-secondary)] mb-1.5 block">
-            Κόστος Διαχ. (€)
+          <Label className="text-xs text-yellow-500 mb-1.5 flex items-center gap-1">
+            <Coins size={12} /> Coins
           </Label>
           <Input
-            id="mgmt"
+            data-testid="coins-input"
+            type="number"
+            step="1"
+            min="0"
+            value={coinsQty}
+            onChange={(e) => setCoinsQty(e.target.value)}
+            className="bg-[var(--bg-input)] border-[var(--border-color)] text-yellow-500 mono"
+            title={`${coinsEur.toFixed(4)}€`}
+          />
+          {parseInt(coinsQty) > 0 && (
+            <span className="text-[10px] text-yellow-500/60 mono mt-0.5 block">{coinsEur.toFixed(4)}€</span>
+          )}
+        </div>
+
+        {/* Advertising */}
+        <div>
+          <Label className="text-xs text-[var(--accent-purple)] mb-1.5 flex items-center gap-1">
+            <Megaphone size={12} /> Διαφήμιση
+          </Label>
+          {adsPct > 0 ? (
+            <button
+              type="button"
+              onClick={() => setAdsEnabled(!adsEnabled)}
+              data-testid="ads-toggle"
+              className={`w-full h-9 rounded-md text-sm mono font-medium transition-all ${
+                adsEnabled
+                  ? "bg-[var(--accent-purple)] text-white"
+                  : "bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--accent-purple)]"
+              }`}
+            >
+              {adsPct}%
+            </button>
+          ) : (
+            <div className="h-9 flex items-center justify-center text-xs text-[var(--text-muted)]">—</div>
+          )}
+        </div>
+
+        {/* Management Cost */}
+        <div>
+          <Label className="text-xs text-[var(--text-secondary)] mb-1.5 block">Κόστος Διαχ.</Label>
+          <Input
             data-testid="mgmt-cost-input"
             type="number"
             step="0.01"
