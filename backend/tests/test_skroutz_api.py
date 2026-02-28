@@ -638,5 +638,93 @@ class TestQuickCalculator:
         print(f"✓ Quick calculate with overrides: MP%={data['avg_mp_pct']}, FBS fee={data['avg_fbs_fee']}€")
 
 
+class TestWholesalePricing:
+    """Tests for wholesale pricing upload and verification - NEW in iteration 3"""
+    
+    def test_products_with_wholesale_prices_exist(self):
+        """Test that products have user_wholesale_price populated from Excel upload"""
+        response = requests.get(f"{BASE_URL}/api/products/all")
+        assert response.status_code == 200
+        
+        products = response.json()
+        
+        # Filter products with wholesale prices
+        products_with_wholesale = [p for p in products if p.get("user_wholesale_price") is not None]
+        
+        # We expect around 518 products to have wholesale prices
+        assert len(products_with_wholesale) > 500, f"Expected ~518 products with wholesale prices, got {len(products_with_wholesale)}"
+        
+        print(f"✓ {len(products_with_wholesale)} products have user_wholesale_price populated")
+    
+    def test_wholesale_price_value_is_reasonable(self):
+        """Test that wholesale prices are positive numbers"""
+        response = requests.get(f"{BASE_URL}/api/products/all")
+        assert response.status_code == 200
+        
+        products = response.json()
+        products_with_wholesale = [p for p in products if p.get("user_wholesale_price") is not None]
+        
+        # Check a few products have reasonable prices
+        for p in products_with_wholesale[:10]:
+            wp = p.get("user_wholesale_price")
+            assert wp > 0, f"Product {p['uid']} has non-positive wholesale price: {wp}"
+            assert wp < 10000, f"Product {p['uid']} has unrealistic wholesale price: {wp}"
+        
+        print(f"✓ Wholesale prices are reasonable positive numbers")
+    
+    def test_upload_status_wholesale_count_matches_products(self):
+        """Test that wholesale_count in upload-status matches actual products with wholesale prices"""
+        status_response = requests.get(f"{BASE_URL}/api/upload-status")
+        assert status_response.status_code == 200
+        status_data = status_response.json()
+        
+        products_response = requests.get(f"{BASE_URL}/api/products/all")
+        assert products_response.status_code == 200
+        products = products_response.json()
+        
+        actual_count = len([p for p in products if p.get("user_wholesale_price") is not None])
+        
+        # Should match
+        assert status_data["wholesale_count"] == actual_count, f"Status shows {status_data['wholesale_count']} but found {actual_count} products"
+        
+        print(f"✓ Wholesale count matches: upload-status={status_data['wholesale_count']}, actual products={actual_count}")
+    
+    def test_specific_product_has_wholesale_price(self):
+        """Test a specific known product has its wholesale price from Excel"""
+        # Get product 7389176 which we saw has user_wholesale_price = 7.52
+        response = requests.get(f"{BASE_URL}/api/products/7389176")
+        assert response.status_code == 200
+        
+        product = response.json()
+        
+        assert "user_wholesale_price" in product, "Product missing user_wholesale_price"
+        assert product["user_wholesale_price"] == 7.52, f"Expected wholesale price 7.52, got {product.get('user_wholesale_price')}"
+        
+        print(f"✓ Product 7389176 has correct wholesale price: {product['user_wholesale_price']}€")
+    
+    def test_calculate_with_saved_wholesale_price(self):
+        """Test calculation using the saved wholesale price from Excel upload"""
+        # Use product that has saved wholesale price
+        payload = {
+            "uid": "7389176",
+            "wholesale_price": 7.52,  # Saved from Excel
+            "vat_pct": 24.0,
+            "profit": 0.90,
+            "mgmt_cost": 0.0
+        }
+        
+        response = requests.post(f"{BASE_URL}/api/calculate", json=payload)
+        assert response.status_code == 200
+        
+        data = response.json()
+        
+        # Verify calculation worked
+        assert data["fbs_final_price"] > 0
+        assert data["marketplace_final_price"] > 0
+        assert data["wholesale_price"] == 7.52
+        
+        print(f"✓ Calculation with wholesale price {payload['wholesale_price']}€: FBS={data['fbs_final_price']}€")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
