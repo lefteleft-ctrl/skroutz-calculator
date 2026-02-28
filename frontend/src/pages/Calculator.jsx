@@ -40,6 +40,7 @@ export default function Calculator() {
         ads_enabled: params.adsEnabled || false,
       });
       setCalcResult(res.data);
+      toast.success("Αποθηκεύτηκε στη λίστα προϊόντων");
     } catch (e) {
       const msg = e.response?.data?.detail || "Σφάλμα υπολογισμού";
       toast.error(msg);
