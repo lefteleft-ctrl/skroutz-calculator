@@ -235,9 +235,15 @@ export default function ProductList() {
 
 function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange, onOverrideChange }) {
   const p = product;
-  const profitColor = p.reverseProfit !== null
-    ? p.reverseProfit >= 0 ? "text-[var(--accent-green)]" : "text-red-400"
-    : "text-[var(--text-muted)]";
+  
+  let profitDisplay = null;
+  let profitColor = "text-[var(--text-muted)]";
+  
+  if (p.reverseProfit !== null) {
+    // User typed a custom price → show reverse profit
+    profitDisplay = p.reverseProfit;
+    profitColor = p.reverseProfit >= 0 ? "text-[var(--accent-green)]" : "text-red-400";
+  }
 
   return (
     <tr className="border-b border-[var(--border-color)] hover:bg-[var(--bg-card)] transition-colors">
@@ -249,7 +255,7 @@ function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange,
         <span className="text-xs mono text-[var(--text-secondary)]">{p.ean || "-"}</span>
       </td>
       <td className="px-3 py-2 text-center">
-        <span className="text-xs mono text-[var(--accent-orange)]">{p.marketplace_commission_pct || "-"}%</span>
+        <span className="text-xs mono text-[var(--accent-orange)]">{p.marketplace_commission_pct != null ? `${p.marketplace_commission_pct}%` : "-"}</span>
       </td>
       <td className="px-3 py-2 text-center">
         <span className="text-xs mono text-[var(--accent-blue)]">{p.fbs_fee != null ? `${p.fbs_fee}€` : "-"}</span>
@@ -287,12 +293,10 @@ function ProductRow({ product, wholesaleValue, overrideValue, onWholesaleChange,
         />
       </td>
       <td className="px-3 py-2 text-center">
-        {p.reverseProfit !== null ? (
+        {profitDisplay !== null ? (
           <span className={`text-xs mono font-semibold ${profitColor}`}>
-            {p.reverseProfit >= 0 ? "+" : ""}{p.reverseProfit.toFixed(2)}€
+            {profitDisplay >= 0 ? "+" : ""}{profitDisplay.toFixed(2)}€
           </span>
-        ) : p.calculatedPrice ? (
-          <span className="text-xs mono text-[var(--accent-green)]">+{(parseFloat(product.calculatedPrice) ? (parseFloat(product.calculatedPrice) - parseFloat(product.calculatedPrice) * (product.marketplace_commission_pct || 0) / 100 - parseFloat(product.calculatedPrice) * (1 - 1/(1 + parseFloat("0.24"))) - (product.fbs_fee || 0) - 0.12 - (product.wholesalePrice || 0)).toFixed(2) : "-")}€</span>
         ) : (
           <span className="text-xs text-[var(--text-muted)]">-</span>
         )}
