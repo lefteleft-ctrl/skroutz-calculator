@@ -516,6 +516,32 @@ async def root():
 
 # --- Reverse Calculate ---
 
+class SaveProductSettingsRequest(BaseModel):
+    uid: str
+    wholesale_price: float
+    coins_quantity: int = 0
+    ads_enabled: bool = False
+    profit: float = 0.90
+    vat_pct: float = 24.0
+
+@api_router.post("/save-product-settings")
+async def save_product_settings(req: SaveProductSettingsRequest):
+    """Save user pricing settings for a product."""
+    result = await db.products.update_one(
+        {"uid": req.uid},
+        {"$set": {
+            "user_wholesale_price": req.wholesale_price,
+            "user_coins_quantity": req.coins_quantity,
+            "user_ads_enabled": req.ads_enabled,
+            "user_profit": req.profit,
+            "user_vat_pct": req.vat_pct,
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Το προϊόν δεν βρέθηκε")
+    return {"message": "Αποθηκεύτηκε", "uid": req.uid}
+
+
 class ReverseCalculateRequest(BaseModel):
     final_price: float
     wholesale_price: float
