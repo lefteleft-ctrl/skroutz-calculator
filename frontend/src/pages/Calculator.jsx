@@ -26,6 +26,9 @@ export default function Calculator() {
     }
   }, []);
 
+  const [lastCalcParams, setLastCalcParams] = useState(null);
+  const [saving, setSaving] = useState(false);
+
   const handleCalculate = async (params) => {
     if (!selectedProduct) return;
     setCalculating(true);
@@ -40,12 +43,32 @@ export default function Calculator() {
         ads_enabled: params.adsEnabled || false,
       });
       setCalcResult(res.data);
-      toast.success("Αποθηκεύτηκε στη λίστα προϊόντων");
+      setLastCalcParams(params);
     } catch (e) {
       const msg = e.response?.data?.detail || "Σφάλμα υπολογισμού";
       toast.error(msg);
     } finally {
       setCalculating(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedProduct || !lastCalcParams) return;
+    setSaving(true);
+    try {
+      await axios.post(`${API}/save-product-settings`, {
+        uid: selectedProduct.uid,
+        wholesale_price: lastCalcParams.wholesalePrice,
+        coins_quantity: lastCalcParams.coinsQuantity || 0,
+        ads_enabled: lastCalcParams.adsEnabled || false,
+        profit: lastCalcParams.profit,
+        vat_pct: lastCalcParams.vatPct,
+      });
+      toast.success("Αποθηκεύτηκε στη λίστα προϊόντων");
+    } catch (e) {
+      toast.error("Σφάλμα αποθήκευσης");
+    } finally {
+      setSaving(false);
     }
   };
 
