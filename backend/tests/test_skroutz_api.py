@@ -308,6 +308,13 @@ class TestFileUpload:
         response = requests.post(f"{BASE_URL}/api/upload/fbs-products")
         assert response.status_code == 422
         print("✓ Upload fbs-products endpoint exists")
+    
+    def test_upload_endpoint_exists_wholesale(self):
+        """Verify wholesale upload endpoint exists"""
+        response = requests.post(f"{BASE_URL}/api/upload/wholesale")
+        # 422 Unprocessable Entity means endpoint exists but needs file
+        assert response.status_code == 422
+        print("✓ Upload wholesale endpoint exists")
 
 
 class TestProductsAll:
