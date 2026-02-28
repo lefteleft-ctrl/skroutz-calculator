@@ -6,7 +6,7 @@ import ProductSearch from "@/components/ProductSearch";
 import PriceCalculator from "@/components/PriceCalculator";
 import PriceResults from "@/components/PriceResults";
 import QuickCalculator from "@/components/QuickCalculator";
-import { Upload, Search, Calculator as CalcIcon, Zap, List, Save } from "lucide-react";
+import { Upload, Search, Calculator as CalcIcon, Zap, List, Save, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
