@@ -101,14 +101,15 @@ def safe_float(val):
     return None
 
 
-def calculate_price(cost, profit, fixed_fee, mp_pct_decimal, vat_pct_decimal):
+COIN_COST = 0.0015  # € per coin
+
+def calculate_price(cost, profit, fixed_fee, mp_pct_decimal, vat_pct_decimal, ads_pct_decimal=0.0):
     """
     Correct Skroutz pricing formula.
-    Commission is applied on gross (final price incl. VAT).
-    Formula: final = (cost + profit + fixed_fee) / (1 - mp% - (1 - 1/(1+vat%)))
+    Formula: final = (cost + profit + fixed_fee) / (1 - mp% - ads% - (1 - 1/(1+vat%)))
     """
     vat_impact = 1 - 1 / (1 + vat_pct_decimal)
-    denominator = 1 - mp_pct_decimal - vat_impact
+    denominator = 1 - mp_pct_decimal - ads_pct_decimal - vat_impact
     if denominator <= 0:
         return None
     final_price = (cost + profit + fixed_fee) / denominator
