@@ -51,13 +51,25 @@ export default function Calculator() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
       {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--text-primary)]">
-          Skroutz Price Calculator
-        </h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Υπολογισμός τελικών τιμών πώλησης για FBS & Marketplace
-        </p>
+      <div className="mb-10 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--text-primary)]">
+            Skroutz Price Calculator
+          </h1>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            Υπολογισμός τελικών τιμών πώλησης για FBS & Marketplace
+          </p>
+        </div>
+        {hasData && (
+          <Link
+            to="/products"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-orange)] transition-colors text-sm text-[var(--text-secondary)] hover:text-[var(--accent-orange)]"
+            data-testid="products-list-link"
+          >
+            <List size={16} />
+            <span>Λίστα Προϊόντων</span>
+          </Link>
+        )}
       </div>
 
       {/* Quick Calculator */}
