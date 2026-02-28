@@ -71,6 +71,7 @@ class UploadStatus(BaseModel):
     report_listed_count: int = 0
     fbs_products_count: int = 0
     total_products: int = 0
+    wholesale_count: int = 0
 
 # --- Helpers ---
 
@@ -273,15 +274,79 @@ async def upload_fbs_products(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Σφάλμα ανάγνωσης αρχείου: {str(e)}")
 
 
+@api_router.post("/upload/wholesale")
+async def upload_wholesale_prices(file: UploadFile = File(...)):
+    """Upload wholesale pricing Excel and bulk-update products by EAN."""
+    try:
+        contents = await file.read()
+        wb = openpyxl.load_workbook(io.BytesIO(contents))
+
+        # Build EAN -> wholesale_price map from all sheets
+        ean_price_map = {}
+        for sname in wb.sheetnames:
+            ws = wb[sname]
+            for r in range(1, ws.max_row + 1):
+                a = ws.cell(row=r, column=1).value  # Product name
+                b = ws.cell(row=r, column=2).value  # EAN
+                c = ws.cell(row=r, column=3).value  # Wholesale price
+
+                # Validate: A is a product name string, B looks like EAN, C is a price
+                if not isinstance(a, str) or len(a) < 5:
+                    continue
+                if b is None:
+                    continue
+                # Normalize EAN to string (handle float like 5200309854075.0)
+                ean = str(b).strip()
+                if '.' in ean:
+                    ean = ean.split('.')[0]
+                if not ean or len(ean) < 7 or not ean.isdigit():
+                    continue
+                # Parse price
+                price = safe_float(c)
+                if price is None or price <= 0:
+                    continue
+                ean_price_map[ean] = price
+
+        if not ean_price_map:
+            raise HTTPException(status_code=400, detail="Δεν βρέθηκαν έγκυρα δεδομένα τιμών στο αρχείο")
+
+        # Match by EAN and update wholesale price in DB
+        matched = 0
+        for ean, price in ean_price_map.items():
+            result = await db.products.update_many(
+                {"ean": ean},
+                {"$set": {
+                    "user_wholesale_price": price,
+                    "wholesale_source": "excel_upload",
+                    "wholesale_updated_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+            if result.modified_count > 0:
+                matched += result.modified_count
+
+        return {
+            "message": f"Ενημερώθηκαν {matched} προϊόντα από {len(ean_price_map)} τιμές χονδρικής",
+            "matched_count": matched,
+            "total_prices_in_file": len(ean_price_map),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error parsing wholesale prices: {e}")
+        raise HTTPException(status_code=400, detail=f"Σφάλμα ανάγνωσης αρχείου: {str(e)}")
+
+
 @api_router.get("/upload-status", response_model=UploadStatus)
 async def get_upload_status():
     total = await db.products.count_documents({})
     report_listed = await db.products.count_documents({"source_report_listed": True})
     fbs_products = await db.products.count_documents({"source_fbs_products": True})
+    wholesale_count = await db.products.count_documents({"wholesale_source": "excel_upload"})
     return UploadStatus(
         report_listed_count=report_listed,
         fbs_products_count=fbs_products,
         total_products=total,
+        wholesale_count=wholesale_count,
     )
 
 
