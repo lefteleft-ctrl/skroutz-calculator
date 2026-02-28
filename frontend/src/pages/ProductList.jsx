@@ -309,17 +309,18 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, onWhol
           data-testid={`wholesale-${p.uid}`}
         />
       </td>
-      {/* Coins */}
+      {/* Coins (quantity) */}
       <td className="px-3 py-2">
         <input
           type="number"
-          step="0.01"
+          step="1"
           min="0"
           value={coinsValue}
           onChange={(e) => onCoinsChange(e.target.value)}
           placeholder="0"
           className="w-full px-2 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-yellow-500 focus:border-yellow-500 focus:outline-none"
           data-testid={`coins-${p.uid}`}
+          title={coinsValue ? `${(parseFloat(coinsValue) * 0.0015).toFixed(4)}€` : "Αριθμός coins"}
         />
       </td>
       {/* Advertising toggle */}
