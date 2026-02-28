@@ -21,7 +21,7 @@ class TestHealthAndStatus:
         print(f"✓ API root health check passed: {data['message']}")
 
     def test_upload_status_endpoint(self):
-        """Test upload status returns correct counts"""
+        """Test upload status returns correct counts including wholesale_count"""
         response = requests.get(f"{BASE_URL}/api/upload-status")
         assert response.status_code == 200
         data = response.json()
@@ -30,13 +30,15 @@ class TestHealthAndStatus:
         assert "report_listed_count" in data
         assert "fbs_products_count" in data
         assert "total_products" in data
+        assert "wholesale_count" in data, "Missing wholesale_count field"
         
         # Verify data is loaded (from previous curl uploads)
         assert data["report_listed_count"] > 0, "No report_listed data found"
         assert data["fbs_products_count"] > 0, "No FBS products data found"
         assert data["total_products"] > 0, "No total products found"
+        assert data["wholesale_count"] > 0, "No wholesale data found"
         
-        print(f"✓ Upload status: report_listed={data['report_listed_count']}, fbs_products={data['fbs_products_count']}, total={data['total_products']}")
+        print(f"✓ Upload status: report_listed={data['report_listed_count']}, fbs_products={data['fbs_products_count']}, total={data['total_products']}, wholesale={data['wholesale_count']}")
 
 
 class TestProductSearch:
