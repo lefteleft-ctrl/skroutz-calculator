@@ -1,4 +1,4 @@
-import { Truck, Store } from "lucide-react";
+import { Truck, Store, Coins, Megaphone } from "lucide-react";
 
 export default function PriceResults({ result }) {
   if (!result) return null;
@@ -10,9 +10,19 @@ export default function PriceResults({ result }) {
         <p className="text-sm text-[var(--text-secondary)]">
           {result.product_name}
         </p>
-        <div className="flex gap-3 mt-1">
+        <div className="flex gap-3 mt-1 flex-wrap">
           {result.ean && <span className="text-xs text-[var(--text-muted)] mono">EAN: {result.ean}</span>}
           <span className="text-xs text-[var(--text-muted)]">{result.category}</span>
+          {result.coins_quantity > 0 && (
+            <span className="text-xs text-yellow-500 mono flex items-center gap-1">
+              <Coins size={10} /> {result.coins_quantity} coins ({result.coins_eur}€)
+            </span>
+          )}
+          {result.ads_enabled && (
+            <span className="text-xs text-[var(--accent-purple)] mono flex items-center gap-1">
+              <Megaphone size={10} /> Ads {result.advertising_commission_pct}%
+            </span>
+          )}
         </div>
       </div>
 
@@ -24,7 +34,7 @@ export default function PriceResults({ result }) {
           label="FBS (Fulfilled by Skroutz)"
           finalPrice={result.fbs_final_price}
           breakdown={result.fbs_breakdown}
-          feeLabel="FBS Fee + Συσκευασία"
+          feeLabel="FBS Fee + Συσκ. + Coins"
           feeKey="fbs_fee_plus_packaging"
         />
         <PriceCard
@@ -33,7 +43,7 @@ export default function PriceResults({ result }) {
           label="Marketplace"
           finalPrice={result.marketplace_final_price}
           breakdown={result.marketplace_breakdown}
-          feeLabel="Κόστος Διαχείρισης"
+          feeLabel="Κόστος Διαχ. + Coins"
           feeKey="management_cost"
         />
       </div>
@@ -69,6 +79,9 @@ function PriceCard({ type, icon, label, finalPrice, breakdown, feeLabel, feeKey 
         <Row label="Κέρδος" value={breakdown.profit_target} accent="green" />
         <Row label={feeLabel} value={breakdown[feeKey]} />
         <Row label={`Προμήθεια MP (${breakdown.commission_pct}%)`} value={breakdown.commission_amount} accent="orange" />
+        {breakdown.ads_pct > 0 && (
+          <Row label={`Διαφήμιση (${breakdown.ads_pct}%)`} value={breakdown.ads_amount} accent="purple" />
+        )}
         <Row label={`ΦΠΑ (${breakdown.vat_pct}%)`} value={breakdown.vat_amount} />
         <div className="pt-2 border-t border-[var(--border-color)]">
           <Row label="Καθαρό στο κατάστημα" value={breakdown.net_to_store} bold />
@@ -84,6 +97,7 @@ function Row({ label, value, accent, bold }) {
     green: "text-[var(--accent-green)]",
     orange: "text-[var(--accent-orange)]",
     blue: "text-[var(--accent-blue)]",
+    purple: "text-[var(--accent-purple)]",
   };
   const valueColor = accent ? colorMap[accent] : "text-[var(--text-primary)]";
 
