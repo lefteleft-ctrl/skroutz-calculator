@@ -237,8 +237,8 @@ export default function ProductList() {
                 <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[50px]">MP%</th>
                 <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[50px]">FBS€</th>
                 <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[90px]">Χονδρική</th>
-                <th className="text-center text-xs font-medium text-yellow-500 px-3 py-2.5 w-[70px]" title="Coins σε €">
-                  <div className="flex items-center justify-center gap-1"><Coins size={12} />€</div>
+                <th className="text-center text-xs font-medium text-yellow-500 px-3 py-2.5 w-[70px]" title="Αριθμός Coins (1 coin = 0.0015€)">
+                  <div className="flex items-center justify-center gap-1"><Coins size={12} />Qty</div>
                 </th>
                 <th className="text-center text-xs font-medium text-[var(--accent-purple)] px-3 py-2.5 w-[65px]" title="Διαφήμιση % — κλικ για ενεργοποίηση">
                   <div className="flex items-center justify-center gap-1"><Megaphone size={12} />%</div>
