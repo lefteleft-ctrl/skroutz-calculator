@@ -164,7 +164,7 @@ export default function PriceCalculator({ product, onCalculate, calculating, dis
         ) : (
           <Calculator className="w-4 h-4 mr-2" />
         )}
-        Υπολογισμός
+        Υπολογισμός & Αποθήκευση
       </Button>
     </form>
   );
