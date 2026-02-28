@@ -36,6 +36,8 @@ export default function Calculator() {
         vat_pct: params.vatPct,
         profit: params.profit,
         mgmt_cost: params.mgmtCost,
+        coins_quantity: params.coinsQuantity || 0,
+        ads_enabled: params.adsEnabled || false,
       });
       setCalcResult(res.data);
     } catch (e) {
