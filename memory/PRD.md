@@ -31,6 +31,9 @@ Final Price = (Wholesale + Profit + Fixed Fee) / (1 - MP% - (1 - 1/(1+VAT%)))
 - [x] Adjustable VAT (24%/13%/6%), profit, management cost
 - [x] Detailed cost breakdown display
 - [x] **Quick Calculator** - instant pricing with average values from uploaded data
+- [x] **Product List** - all 588 products alphabetically with inline wholesale price input
+- [x] **Reverse Calculation** - override final price to see resulting profit
+- [x] **Excel Export** - download full pricing breakdown as Excel file
 - [x] Dark theme UI in Greek language
 
 ## Tech Stack
