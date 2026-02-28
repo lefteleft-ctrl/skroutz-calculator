@@ -458,6 +458,226 @@ async def calculate_price_endpoint(req: CalculateRequest):
 async def root():
     return {"message": "Skroutz Price Calculator API"}
 
+
+# --- All Products (for table view) ---
+
+@api_router.get("/products/all")
+async def get_all_products():
+    """Get all products sorted alphabetically by name."""
+    products = await db.products.find(
+        {},
+        {
+            "_id": 0,
+            "uid": 1,
+            "name": 1,
+            "fbs_name": 1,
+            "ean": 1,
+            "category": 1,
+            "fbs_category": 1,
+            "manufacturer": 1,
+            "fbs_manufacturer": 1,
+            "marketplace_commission_pct": 1,
+            "fbs_fee": 1,
+            "management_cost": 1,
+            "weight_kg": 1,
+            "current_price": 1,
+            "fbs_current_price": 1,
+        }
+    ).sort("name", 1).to_list(5000)
+    # Normalize names
+    for p in products:
+        if not p.get("name") and p.get("fbs_name"):
+            p["name"] = p["fbs_name"]
+        if not p.get("category") and p.get("fbs_category"):
+            p["category"] = p["fbs_category"]
+    return products
+
+
+# --- Reverse Calculate ---
+
+class ReverseCalculateRequest(BaseModel):
+    final_price: float
+    wholesale_price: float
+    mp_pct: float  # as percentage e.g. 9.24
+    fbs_fee: float = 0.56
+    vat_pct: float = 24.0
+    packaging_cost: float = 0.12
+
+@api_router.post("/reverse-calculate")
+async def reverse_calculate(req: ReverseCalculateRequest):
+    """Given a final selling price, calculate the real profit."""
+    mp_decimal = req.mp_pct / 100.0
+    vat_decimal = req.vat_pct / 100.0
+    
+    commission = req.final_price * mp_decimal
+    vat_amount = req.final_price * (1 - 1 / (1 + vat_decimal))
+    fbs_fixed = req.fbs_fee + req.packaging_cost
+    
+    net_to_store = req.final_price - commission - vat_amount - fbs_fixed
+    real_profit = net_to_store - req.wholesale_price
+    
+    return {
+        "final_price": req.final_price,
+        "wholesale_price": req.wholesale_price,
+        "commission_amount": round(commission, 2),
+        "commission_pct": req.mp_pct,
+        "vat_amount": round(vat_amount, 2),
+        "fbs_fee_plus_packaging": round(fbs_fixed, 2),
+        "net_to_store": round(net_to_store, 2),
+        "real_profit": round(real_profit, 2),
+        "is_profitable": real_profit > 0,
+    }
+
+
+# --- Bulk Calculate + Excel Export ---
+
+class BulkProductInput(BaseModel):
+    uid: str
+    wholesale_price: float
+
+class BulkCalculateRequest(BaseModel):
+    products: List[BulkProductInput]
+    vat_pct: float = 24.0
+    profit: float = 0.90
+    mgmt_cost: float = 0.0
+
+@api_router.post("/bulk-calculate")
+async def bulk_calculate(req: BulkCalculateRequest):
+    """Calculate prices for multiple products at once."""
+    uids = [p.uid for p in req.products]
+    wholesale_map = {p.uid: p.wholesale_price for p in req.products}
+    
+    db_products = await db.products.find(
+        {"uid": {"$in": uids}},
+        {"_id": 0}
+    ).to_list(5000)
+    
+    db_map = {p["uid"]: p for p in db_products}
+    results = []
+    
+    vat_decimal = req.vat_pct / 100.0
+    packaging = 0.12
+    
+    for uid, cost in wholesale_map.items():
+        product = db_map.get(uid)
+        if not product:
+            continue
+        mp_pct = product.get("marketplace_commission_pct")
+        if mp_pct is None:
+            continue
+        
+        mp_decimal = mp_pct / 100.0
+        fbs_fee = product.get("fbs_fee", 0.0) or 0.0
+        
+        # FBS
+        fbs_fixed = fbs_fee + packaging
+        fbs_final = calculate_price(cost, req.profit, fbs_fixed, mp_decimal, vat_decimal)
+        
+        # Marketplace
+        mp_fixed = req.mgmt_cost
+        mp_final = calculate_price(cost, req.profit, mp_fixed, mp_decimal, vat_decimal)
+        
+        if fbs_final and mp_final:
+            fbs_bd = build_breakdown(fbs_final, cost, req.profit, fbs_fixed, mp_decimal, vat_decimal, "fbs_fee_plus_packaging")
+            mp_bd = build_breakdown(mp_final, cost, req.profit, mp_fixed, mp_decimal, vat_decimal, "management_cost")
+            
+            results.append({
+                "uid": uid,
+                "name": product.get("name") or product.get("fbs_name", ""),
+                "ean": product.get("ean"),
+                "category": product.get("category") or product.get("fbs_category"),
+                "wholesale_price": cost,
+                "marketplace_commission_pct": mp_pct,
+                "fbs_fee": fbs_fee,
+                "fbs_final_price": fbs_final,
+                "fbs_real_profit": fbs_bd["real_profit"],
+                "marketplace_final_price": mp_final,
+                "mp_real_profit": mp_bd["real_profit"],
+            })
+    
+    return {"results": results, "count": len(results)}
+
+
+from fastapi.responses import StreamingResponse
+
+@api_router.post("/export-excel")
+async def export_excel(req: BulkCalculateRequest):
+    """Generate and download Excel with all calculations."""
+    # First do bulk calculation
+    uids = [p.uid for p in req.products]
+    wholesale_map = {p.uid: p.wholesale_price for p in req.products}
+    
+    db_products = await db.products.find(
+        {"uid": {"$in": uids}},
+        {"_id": 0}
+    ).to_list(5000)
+    
+    db_map = {p["uid"]: p for p in db_products}
+    
+    vat_decimal = req.vat_pct / 100.0
+    packaging = 0.12
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Κοστολόγηση Skroutz"
+    
+    # Headers
+    headers = [
+        "Όνομα", "EAN", "UID", "Κατηγορία",
+        "Χονδρική (€)", "Κέρδος (€)", "ΦΠΑ %",
+        "Προμήθεια MP %", "FBS Fee (€)", "Συσκευασία (€)",
+        "FBS Τελική Τιμή (€)", "FBS Προμήθεια (€)", "FBS ΦΠΑ (€)", "FBS Καθαρό (€)", "FBS Κέρδος (€)",
+        "MP Τελική Τιμή (€)", "MP Προμήθεια (€)", "MP ΦΠΑ (€)", "MP Καθαρό (€)", "MP Κέρδος (€)",
+    ]
+    for col, h in enumerate(headers, 1):
+        ws.cell(row=1, column=col, value=h)
+    
+    row_num = 2
+    for uid, cost in wholesale_map.items():
+        product = db_map.get(uid)
+        if not product:
+            continue
+        mp_pct = product.get("marketplace_commission_pct")
+        if mp_pct is None:
+            continue
+        
+        mp_decimal = mp_pct / 100.0
+        fbs_fee = product.get("fbs_fee", 0.0) or 0.0
+        fbs_fixed = fbs_fee + packaging
+        mp_fixed = req.mgmt_cost
+        
+        fbs_final = calculate_price(cost, req.profit, fbs_fixed, mp_decimal, vat_decimal)
+        mp_final = calculate_price(cost, req.profit, mp_fixed, mp_decimal, vat_decimal)
+        
+        if not fbs_final or not mp_final:
+            continue
+        
+        fbs_bd = build_breakdown(fbs_final, cost, req.profit, fbs_fixed, mp_decimal, vat_decimal, "fbs_fee_plus_packaging")
+        mp_bd = build_breakdown(mp_final, cost, req.profit, mp_fixed, mp_decimal, vat_decimal, "management_cost")
+        
+        name = product.get("name") or product.get("fbs_name", "")
+        row_data = [
+            name, product.get("ean"), uid, product.get("category") or product.get("fbs_category"),
+            cost, req.profit, req.vat_pct,
+            mp_pct, fbs_fee, packaging,
+            fbs_final, fbs_bd["commission_amount"], fbs_bd["vat_amount"], fbs_bd["net_to_store"], fbs_bd["real_profit"],
+            mp_final, mp_bd["commission_amount"], mp_bd["vat_amount"], mp_bd["net_to_store"], mp_bd["real_profit"],
+        ]
+        for col, val in enumerate(row_data, 1):
+            ws.cell(row=row_num, column=col, value=val)
+        row_num += 1
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=skroutz_pricing.xlsx"}
+    )
+
 # Include router
 app.include_router(api_router)
 
