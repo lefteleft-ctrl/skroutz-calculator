@@ -484,18 +484,6 @@ async def calculate_price_endpoint(req: CalculateRequest):
         raise HTTPException(status_code=400, detail="Αδύνατος υπολογισμός - ελέγξτε τις παραμέτρους")
     mp_breakdown = build_breakdown(mp_final, req.wholesale_price, req.profit, mp_fixed, mp_decimal, vat_decimal, "management_cost", ads_decimal)
 
-    # Save user settings for this product
-    await db.products.update_one(
-        {"uid": req.uid},
-        {"$set": {
-            "user_wholesale_price": req.wholesale_price,
-            "user_coins_quantity": req.coins_quantity,
-            "user_ads_enabled": req.ads_enabled,
-            "user_profit": req.profit,
-            "user_vat_pct": req.vat_pct,
-        }}
-    )
-
     return CalculateResponse(
         product_name=product.get("name") or product.get("fbs_name", ""),
         uid=req.uid,
