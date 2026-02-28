@@ -62,7 +62,8 @@ export default function ProductList() {
     const commission = finalPrice * mp;
     const adAmount = finalPrice * ad;
     const vatAmount = finalPrice * (1 - 1 / (1 + vat));
-    const fixed = (fbsFee || 0) + 0.12 + (coinsVal || 0);
+    const coinsEur = (coinsQty || 0) * COIN_COST;
+    const fixed = (fbsFee || 0) + 0.12 + coinsEur;
     return finalPrice - commission - adAmount - vatAmount - fixed - cost;
   }, [vatPct]);
 
