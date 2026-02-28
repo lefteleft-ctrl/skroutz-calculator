@@ -31,8 +31,11 @@ class CalculateRequest(BaseModel):
     vat_pct: float = 24.0
     profit: float = 0.90
     mgmt_cost: float = 0.0
+    coins_quantity: int = 0
+    ads_enabled: bool = False
 
 class CalculateResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
     product_name: str
     uid: str
     ean: Optional[str] = None
@@ -41,6 +44,10 @@ class CalculateResponse(BaseModel):
     vat_pct: float
     profit: float
     marketplace_commission_pct: float
+    advertising_commission_pct: float = 0.0
+    ads_enabled: bool = False
+    coins_quantity: int = 0
+    coins_eur: float = 0.0
     fbs_fee: float
     mgmt_cost: float
     packaging_cost: float
