@@ -17,7 +17,7 @@ Greek (Ελληνικά)
 5. Detailed calculation page per product
 6. Interactive Product List with reverse calculation, Coins/Ads, export
 7. Save/persist settings per product
-8. Show current Skroutz retail prices in Product List for comparison
+8. Pre-fill "Δική σου Τιμή" with current Skroutz prices and auto-calculate profit/loss
 
 ## Architecture
 - **Backend**: FastAPI (server.py) + MongoDB
@@ -54,18 +54,19 @@ Greek (Ελληνικά)
 - [x] Separate Calculate/Save workflow
 - [x] Excel export
 - [x] Settings persistence per product
-- [x] **Skroutz retail price column in Product List (from report_listed/FBS) - Mar 2026**
+- [x] Pre-fill "Δική σου Τιμή" with Skroutz current prices (from report_listed/FBS)
+- [x] Auto profit/loss calculation with color coding (green=profit, red=loss)
 
 ## Completed - Feb 28, 2026
 - Implemented `POST /api/upload/wholesale` endpoint
 - Parses multi-sheet Excel files (56 sheets, ~1460 products)
 - Matches products by EAN barcode (518/589 matched)
 - Added third DropZone "Χονδρικές Τιμές" in ExcelUploader
-- Updated upload-status to include wholesale_count
 
 ## Completed - Mar 1, 2026
-- Added "Τιμή Skroutz" column to Product List showing current retail price from Skroutz
-- Uses current_price (report_listed) or fbs_current_price (FBS products)
+- Pre-filled "Δική σου Τιμή" with current Skroutz prices (current_price / fbs_current_price)
+- Automatic profit/loss calculation: green for positive, red for negative
+- Override prices no longer cleared when changing wholesale/coins/ads
 
 ## Backlog
 - Refactor server.py into separate routes/services/models files
