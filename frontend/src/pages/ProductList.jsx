@@ -86,7 +86,6 @@ export default function ProductList() {
 
   const setWholesale = (uid, val) => {
     setWholesalePrices((prev) => ({ ...prev, [uid]: val }));
-    setOverridePrices((prev) => { const n = { ...prev }; delete n[uid]; return n; });
   };
 
   const setOverride = (uid, val) => {
@@ -95,12 +94,10 @@ export default function ProductList() {
 
   const setCoins = (uid, val) => {
     setCoinsMap((prev) => ({ ...prev, [uid]: val }));
-    setOverridePrices((prev) => { const n = { ...prev }; delete n[uid]; return n; });
   };
 
   const toggleAd = (uid, adPct) => {
     setAdEnabledMap((prev) => ({ ...prev, [uid]: !prev[uid] }));
-    setOverridePrices((prev) => { const n = { ...prev }; delete n[uid]; return n; });
   };
 
   const productsWithPrices = useMemo(() => {
