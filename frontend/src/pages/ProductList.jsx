@@ -266,20 +266,17 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, vatVal
   return (
     <tr className="border-b border-[var(--border-color)] hover:bg-[var(--bg-card)] transition-colors">
       <td className="px-3 py-2">
-        <p className="text-xs text-[var(--text-primary)] truncate max-w-[210px]" title={p.name}>{p.name}</p>
-        <span className="text-[10px] text-[var(--text-muted)]">{p.category}</span>
+        <p className="text-sm text-[var(--text-primary)] truncate max-w-[250px]" title={p.name}>{p.name}</p>
+        <span className="text-[11px] text-[var(--text-muted)] mono">{p.ean || ""}</span>
       </td>
-      <td className="px-3 py-2">
-        <span className="text-[10px] mono text-[var(--text-secondary)]">{p.ean || "-"}</span>
+      <td className="px-2 py-2 text-center">
+        <span className="text-sm mono text-[var(--accent-orange)]">{p.marketplace_commission_pct != null ? `${p.marketplace_commission_pct}` : "-"}</span>
       </td>
-      <td className="px-3 py-2 text-center">
-        <span className="text-xs mono text-[var(--accent-orange)]">{p.marketplace_commission_pct != null ? `${p.marketplace_commission_pct}` : "-"}</span>
-      </td>
-      <td className="px-3 py-2 text-center">
-        <span className="text-xs mono text-[var(--accent-blue)]">{p.fbs_fee != null ? `${p.fbs_fee}` : "-"}</span>
+      <td className="px-2 py-2 text-center">
+        <span className="text-sm mono text-[var(--accent-blue)]">{p.fbs_fee != null ? `${p.fbs_fee}` : "-"}</span>
       </td>
       {/* Wholesale price */}
-      <td className="px-3 py-2">
+      <td className="px-2 py-1.5">
         <input
           type="number"
           step="0.01"
@@ -287,16 +284,16 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, vatVal
           value={wholesaleValue}
           onChange={(e) => onWholesaleChange(e.target.value)}
           placeholder="—"
-          className="w-full px-1.5 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] focus:border-[var(--accent-orange)] focus:outline-none"
+          className="w-full px-2 py-1.5 text-sm mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] focus:border-[var(--accent-orange)] focus:outline-none"
           data-testid={`wholesale-${p.uid}`}
         />
       </td>
       {/* VAT per product */}
-      <td className="px-3 py-1.5">
+      <td className="px-2 py-1.5">
         <select
           value={vatValue}
           onChange={(e) => onVatChange(e.target.value)}
-          className="w-full px-1 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-emerald-400 focus:border-emerald-400 focus:outline-none appearance-none cursor-pointer"
+          className="w-full px-1 py-1.5 text-sm mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-emerald-400 focus:border-emerald-400 focus:outline-none appearance-none cursor-pointer"
           data-testid={`vat-${p.uid}`}
         >
           <option value="24">24%</option>
@@ -305,7 +302,7 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, vatVal
         </select>
       </td>
       {/* Profit per product */}
-      <td className="px-3 py-1.5">
+      <td className="px-2 py-1.5">
         <input
           type="number"
           step="0.01"
@@ -313,12 +310,12 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, vatVal
           value={profitValue}
           onChange={(e) => onProfitChange(e.target.value)}
           placeholder="0.90"
-          className="w-full px-1.5 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-sky-400 focus:border-sky-400 focus:outline-none"
+          className="w-full px-2 py-1.5 text-sm mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-sky-400 focus:border-sky-400 focus:outline-none"
           data-testid={`profit-${p.uid}`}
         />
       </td>
       {/* Coins (quantity) */}
-      <td className="px-3 py-1.5">
+      <td className="px-2 py-1.5">
         <input
           type="number"
           step="1"
@@ -326,17 +323,17 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, vatVal
           value={coinsValue}
           onChange={(e) => onCoinsChange(e.target.value)}
           placeholder="0"
-          className="w-full px-1 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-yellow-500 focus:border-yellow-500 focus:outline-none"
+          className="w-full px-1 py-1.5 text-sm mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-yellow-500 focus:border-yellow-500 focus:outline-none"
           data-testid={`coins-${p.uid}`}
           title={coinsValue ? `${(parseFloat(coinsValue) * 0.0015).toFixed(4)}€` : "Αριθμός coins"}
         />
       </td>
       {/* Advertising toggle */}
-      <td className="px-3 py-1.5 text-center">
+      <td className="px-2 py-1.5 text-center">
         {p.advertising_commission_pct ? (
           <button
             onClick={onToggleAd}
-            className={`px-2 py-1 text-xs mono rounded transition-all ${
+            className={`px-2.5 py-1.5 text-sm mono rounded transition-all ${
               p.adEnabled
                 ? "bg-[var(--accent-purple)] text-white font-semibold"
                 : "bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-muted)] hover:border-[var(--accent-purple)]"
@@ -347,19 +344,19 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, vatVal
             {p.advertising_commission_pct}
           </button>
         ) : (
-          <span className="text-xs text-[var(--text-muted)]">-</span>
+          <span className="text-sm text-[var(--text-muted)]">-</span>
         )}
       </td>
       {/* FBS calculated price */}
-      <td className="px-3 py-2 text-center">
+      <td className="px-2 py-2 text-center">
         {p.calculatedPrice ? (
-          <span className="text-xs mono font-semibold text-[var(--accent-orange)]">{p.calculatedPrice.toFixed(2)}€</span>
+          <span className="text-sm mono font-semibold text-[var(--accent-orange)]">{p.calculatedPrice.toFixed(2)}€</span>
         ) : (
-          <span className="text-xs text-[var(--text-muted)]">-</span>
+          <span className="text-sm text-[var(--text-muted)]">-</span>
         )}
       </td>
       {/* Custom override price */}
-      <td className="px-3 py-1.5">
+      <td className="px-2 py-1.5">
         <input
           type="number"
           step="0.01"
@@ -367,18 +364,18 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, vatVal
           value={overrideValue}
           onChange={(e) => onOverrideChange(e.target.value)}
           placeholder={p.calculatedPrice ? p.calculatedPrice.toFixed(2) : "-"}
-          className="w-full px-1.5 py-1 text-xs mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] focus:border-[var(--accent-purple)] focus:outline-none"
+          className="w-full px-2 py-1.5 text-sm mono text-center rounded bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] focus:border-[var(--accent-purple)] focus:outline-none"
           data-testid={`override-${p.uid}`}
         />
       </td>
       {/* Profit */}
-      <td className="px-3 py-2 text-center">
+      <td className="px-2 py-2 text-center">
         {profitDisplay !== null ? (
-          <span className={`text-xs mono font-semibold ${profitColor}`}>
+          <span className={`text-sm mono font-semibold ${profitColor}`}>
             {profitDisplay >= 0 ? "+" : ""}{profitDisplay.toFixed(2)}€
           </span>
         ) : (
-          <span className="text-xs text-[var(--text-muted)]">-</span>
+          <span className="text-sm text-[var(--text-muted)]">-</span>
         )}
       </td>
     </tr>
