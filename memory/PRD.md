@@ -17,6 +17,7 @@ Greek (Ελληνικά)
 5. Detailed calculation page per product
 6. Interactive Product List with reverse calculation, Coins/Ads, export
 7. Save/persist settings per product
+8. Show current Skroutz retail prices in Product List for comparison
 
 ## Architecture
 - **Backend**: FastAPI (server.py) + MongoDB
@@ -43,7 +44,7 @@ Greek (Ελληνικά)
 - [x] Full FastAPI backend with all endpoints
 - [x] Excel upload for Marketplace data (report_listed)
 - [x] Excel upload for FBS data (fbs_products)
-- [x] **Bulk wholesale price upload via Excel (matched by EAN) - Feb 2026**
+- [x] Bulk wholesale price upload via Excel (matched by EAN)
 - [x] Quick Calculator with averages
 - [x] Product Search
 - [x] Detailed price calculator per product
@@ -53,6 +54,7 @@ Greek (Ελληνικά)
 - [x] Separate Calculate/Save workflow
 - [x] Excel export
 - [x] Settings persistence per product
+- [x] **Skroutz retail price column in Product List (from report_listed/FBS) - Mar 2026**
 
 ## Completed - Feb 28, 2026
 - Implemented `POST /api/upload/wholesale` endpoint
@@ -60,8 +62,10 @@ Greek (Ελληνικά)
 - Matches products by EAN barcode (518/589 matched)
 - Added third DropZone "Χονδρικές Τιμές" in ExcelUploader
 - Updated upload-status to include wholesale_count
-- All tests passed (36/36 backend, 100% frontend)
+
+## Completed - Mar 1, 2026
+- Added "Τιμή Skroutz" column to Product List showing current retail price from Skroutz
+- Uses current_price (report_listed) or fbs_current_price (FBS products)
 
 ## Backlog
 - Refactor server.py into separate routes/services/models files
-- No other pending tasks
