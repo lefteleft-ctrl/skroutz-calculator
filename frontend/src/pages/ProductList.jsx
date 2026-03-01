@@ -261,7 +261,6 @@ export default function ProductList() {
                   <div className="flex items-center justify-center gap-1"><Megaphone size={12} />%</div>
                 </th>
                 <th className="text-center text-xs font-medium text-[var(--accent-orange)] px-3 py-2.5 w-[80px]">FBS Τιμή</th>
-                <th className="text-center text-xs font-medium text-cyan-400 px-3 py-2.5 w-[80px]" title="Τρέχουσα τιμή στο Skroutz">Τιμή Skroutz</th>
                 <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[100px]">Δική σου Τιμή</th>
                 <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[70px]">Κέρδος</th>
               </tr>
@@ -364,16 +363,6 @@ function ProductRow({ product, wholesaleValue, overrideValue, coinsValue, onWhol
       <td className="px-3 py-2 text-center">
         {p.calculatedPrice ? (
           <span className="text-xs mono font-semibold text-[var(--accent-orange)]">{p.calculatedPrice.toFixed(2)}€</span>
-        ) : (
-          <span className="text-xs text-[var(--text-muted)]">-</span>
-        )}
-      </td>
-      {/* Current Skroutz price */}
-      <td className="px-3 py-2 text-center" data-testid={`skroutz-price-${p.uid}`}>
-        {(p.current_price || p.fbs_current_price) ? (
-          <span className="text-xs mono font-semibold text-cyan-400">
-            {(p.current_price || p.fbs_current_price).toFixed(2)}€
-          </span>
         ) : (
           <span className="text-xs text-[var(--text-muted)]">-</span>
         )}
