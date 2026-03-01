@@ -29,12 +29,17 @@ export default function ProductList() {
       const wp = {};
       const coins = {};
       const ads = {};
+      const overrides = {};
       for (const p of r.data) {
         if (p.user_wholesale_price) wp[p.uid] = String(p.user_wholesale_price);
         if (p.user_coins_quantity) coins[p.uid] = String(p.user_coins_quantity);
         if (p.user_ads_enabled) ads[p.uid] = true;
+        // Pre-fill "Δική σου Τιμή" with current Skroutz price
+        const skroutzPrice = p.current_price || p.fbs_current_price;
+        if (skroutzPrice) overrides[p.uid] = String(skroutzPrice);
       }
       setWholesalePrices(wp);
+      setOverridePrices(overrides);
       setCoinsMap(coins);
       setAdEnabledMap(ads);
       setLoading(false);
