@@ -209,22 +209,21 @@ export default function ProductList() {
           <table className="w-full" data-testid="products-table">
             <thead>
               <tr className="bg-[var(--bg-card)] border-b border-[var(--border-color)]">
-                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 min-w-[220px]">Προϊόν</th>
-                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[100px]">EAN</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[50px]">MP%</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[50px]">FBS€</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[80px]">Χονδρική</th>
-                <th className="text-center text-xs font-medium text-emerald-400 px-3 py-2.5 w-[60px]">ΦΠΑ%</th>
-                <th className="text-center text-xs font-medium text-sky-400 px-3 py-2.5 w-[70px]">Κέρδος€</th>
-                <th className="text-center text-xs font-medium text-yellow-500 px-3 py-2.5 w-[60px]" title="Αριθμός Coins (1 coin = 0.0015€)">
-                  <div className="flex items-center justify-center gap-1"><Coins size={12} />Qty</div>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[260px]">Προϊόν</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-2 py-2.5 w-[55px]">MP%</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-2 py-2.5 w-[55px]">FBS€</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-2 py-2.5 w-[95px]">Χονδρική</th>
+                <th className="text-center text-xs font-medium text-emerald-400 px-2 py-2.5 w-[72px]">ΦΠΑ%</th>
+                <th className="text-center text-xs font-medium text-sky-400 px-2 py-2.5 w-[85px]">Κέρδος€</th>
+                <th className="text-center text-xs font-medium text-yellow-500 px-2 py-2.5 w-[72px]" title="Αριθμός Coins (1 coin = 0.0015€)">
+                  <div className="flex items-center justify-center gap-1"><Coins size={13} />Qty</div>
                 </th>
-                <th className="text-center text-xs font-medium text-[var(--accent-purple)] px-3 py-2.5 w-[55px]" title="Διαφήμιση % — κλικ για ενεργοποίηση">
-                  <div className="flex items-center justify-center gap-1"><Megaphone size={12} />%</div>
+                <th className="text-center text-xs font-medium text-[var(--accent-purple)] px-2 py-2.5 w-[60px]" title="Διαφήμιση % — κλικ για ενεργοποίηση">
+                  <div className="flex items-center justify-center gap-1"><Megaphone size={13} />%</div>
                 </th>
-                <th className="text-center text-xs font-medium text-[var(--accent-orange)] px-3 py-2.5 w-[75px]">FBS Τιμή</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[90px]">Δική σου Τιμή</th>
-                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-3 py-2.5 w-[70px]">Κέρδος</th>
+                <th className="text-center text-xs font-medium text-[var(--accent-orange)] px-2 py-2.5 w-[90px]">FBS Τιμή</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-2 py-2.5 w-[100px]">Δική σου Τιμή</th>
+                <th className="text-center text-xs font-medium text-[var(--text-muted)] px-2 py-2.5 w-[85px]">Κέρδος</th>
               </tr>
             </thead>
             <tbody>
