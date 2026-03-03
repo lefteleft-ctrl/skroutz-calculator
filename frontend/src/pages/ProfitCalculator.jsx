@@ -296,22 +296,45 @@ export default function ProfitCalculator() {
 
         {/* Manual Results */}
         {manualResults && (
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-3">
             {manualResults.results.map((r, i) => (
-              <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${r.matched ? "border-[var(--border-color)]" : "border-red-500/30 bg-red-500/5"}`}>
-                <div>
-                  <p className="text-sm text-[var(--text-primary)]">{r.name}</p>
-                  <span className="text-[11px] mono text-[var(--text-muted)]">{r.ean} x{r.quantity}</span>
-                </div>
-                {r.matched ? (
-                  <div className="text-right">
-                    <span className={`text-sm mono font-bold ${r.total_profit >= 0 ? "text-[var(--accent-green)]" : "text-red-500"}`}>
-                      {r.total_profit >= 0 ? "+" : ""}{r.total_profit.toFixed(2)}€
-                    </span>
-                    <p className="text-[11px] text-[var(--text-muted)]">{r.profit_per_unit.toFixed(2)}€/τμχ</p>
+              <div key={i} className={`p-4 rounded-lg border ${!r.matched ? "border-red-500/30 bg-red-500/5" : r.missing_wholesale ? "border-yellow-500/30 bg-yellow-500/5" : "border-[var(--border-color)]"}`}>
+                {!r.matched ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-[var(--text-primary)]">{r.ean}</span>
+                    <span className="text-xs text-red-400">Δεν βρέθηκε</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-red-400">Δεν βρέθηκε</span>
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">{r.name}</p>
+                        <span className="text-[11px] mono text-[var(--text-muted)]">{r.ean} — x{r.quantity} τμχ</span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-lg mono font-bold ${r.total_profit >= 0 ? "text-[var(--accent-green)]" : "text-red-500"}`}>
+                          {r.total_profit >= 0 ? "+" : ""}{r.total_profit.toFixed(2)}€
+                        </span>
+                        <p className="text-[11px] text-[var(--text-muted)]">{r.profit_per_unit >= 0 ? "+" : ""}{r.profit_per_unit.toFixed(2)}€/τμχ</p>
+                      </div>
+                    </div>
+                    {r.missing_wholesale && (
+                      <div className="flex items-center gap-2 mb-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/20">
+                        <AlertTriangle size={14} className="text-yellow-500 shrink-0" />
+                        <span className="text-xs text-yellow-500 font-semibold">Λείπει η χονδρική τιμή! Το κέρδος δεν είναι ακριβές.</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 text-center">
+                      <BreakdownItem label="Τιμή" value={`${r.my_price.toFixed(2)}€`} color="text-sky-400" />
+                      <BreakdownItem label="Χονδρική" value={`${r.wholesale.toFixed(2)}€`} color={r.missing_wholesale ? "text-yellow-500" : "text-[var(--text-secondary)]"} />
+                      <BreakdownItem label={`Προμ. ${r.mp_pct}%`} value={`-${r.commission.toFixed(2)}€`} color="text-red-400" />
+                      <BreakdownItem label={`ΦΠΑ ${r.vat_pct}%`} value={`-${r.vat_amount.toFixed(2)}€`} color="text-red-400" />
+                      <BreakdownItem label="FBS" value={`-${r.fbs_fee.toFixed(2)}€`} color="text-red-400" />
+                      <BreakdownItem label="Μετ/κά" value="-0.12€" color="text-red-400" />
+                      <BreakdownItem label={`Ads ${r.ad_pct}%`} value={r.ad_cost > 0 ? `-${r.ad_cost.toFixed(2)}€` : "—"} color={r.ad_cost > 0 ? "text-red-400" : "text-[var(--text-muted)]"} />
+                      <BreakdownItem label={`Coins (${r.coins_qty})`} value={r.coins_cost > 0 ? `-${r.coins_cost.toFixed(2)}€` : "—"} color={r.coins_cost > 0 ? "text-red-400" : "text-[var(--text-muted)]"} />
+                    </div>
+                  </>
                 )}
               </div>
             ))}
@@ -333,6 +356,15 @@ function SummaryCard({ label, value, color }) {
     <div className="p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)]">
       <p className="text-[11px] text-[var(--text-muted)] mb-1">{label}</p>
       <p className={`text-lg font-bold mono ${color || "text-[var(--text-primary)]"}`}>{value}</p>
+    </div>
+  );
+}
+
+function BreakdownItem({ label, value, color }) {
+  return (
+    <div className="p-1.5 rounded bg-[var(--bg-primary)]">
+      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">{label}</p>
+      <p className={`text-xs mono font-semibold ${color}`}>{value}</p>
     </div>
   );
 }

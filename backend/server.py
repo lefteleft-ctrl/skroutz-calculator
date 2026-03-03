@@ -929,7 +929,7 @@ async def upload_orders(file: UploadFile = File(...)):
 
 @api_router.post("/calculate-manual-profit")
 async def calculate_manual_profit(items: List[dict]):
-    """Calculate profit for manually entered barcode+quantity pairs."""
+    """Calculate profit for manually entered barcode+quantity pairs with full breakdown."""
     eans = [str(item.get("ean", "")).strip() for item in items if item.get("ean")]
     products_cursor = db.products.find({"ean": {"$in": eans}}, {"_id": 0})
     ean_to_product = {}
@@ -965,6 +965,8 @@ async def calculate_manual_profit(items: List[dict]):
         total_for_item = round(profit_per_unit * qty, 2)
         total_profit += total_for_item
 
+        missing_wholesale = wholesale == 0
+
         results.append({
             "name": product.get("name", ""),
             "ean": ean,
@@ -972,8 +974,18 @@ async def calculate_manual_profit(items: List[dict]):
             "matched": True,
             "my_price": round(my_price, 2),
             "wholesale": round(wholesale, 2),
+            "mp_pct": round(mp_pct, 2),
+            "commission": round(commission, 2),
+            "fbs_fee": round(fbs_fee, 2),
+            "vat_pct": round(vat_pct, 1),
+            "vat_amount": round(vat_amount, 2),
+            "ad_pct": round(ad_pct, 2),
+            "ad_cost": round(ad_cost, 2),
+            "coins_qty": coins_qty,
+            "coins_cost": round(coins_cost, 4),
             "profit_per_unit": profit_per_unit,
             "total_profit": total_for_item,
+            "missing_wholesale": missing_wholesale,
         })
 
     return {"results": results, "total_profit": round(total_profit, 2)}
