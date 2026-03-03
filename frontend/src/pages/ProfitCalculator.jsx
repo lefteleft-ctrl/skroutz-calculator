@@ -12,10 +12,12 @@ export default function ProfitCalculator() {
   const [results, setResults] = useState(null);
   const [summary, setSummary] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [manualItems, setManualItems] = useState([{ ean: "", quantity: 1 }]);
+  const [manualItems, setManualItems] = useState([{ search: "", ean: "", name: "", quantity: 1 }]);
   const [manualResults, setManualResults] = useState(null);
   const [calculatingManual, setCalculatingManual] = useState(false);
+  const [suggestions, setSuggestions] = useState({});
   const fileRef = useRef(null);
+  const searchTimers = useRef({});
 
   const handleUpload = async (file) => {
     setUploading(true);
@@ -35,10 +37,10 @@ export default function ProfitCalculator() {
 
   const handleManualCalc = async () => {
     const valid = manualItems.filter((i) => i.ean.trim());
-    if (!valid.length) { toast.error("Βάλτε τουλάχιστον ένα barcode"); return; }
+    if (!valid.length) { toast.error("Επιλέξτε τουλάχιστον ένα προϊόν"); return; }
     setCalculatingManual(true);
     try {
-      const res = await axios.post(`${API}/calculate-manual-profit`, valid);
+      const res = await axios.post(`${API}/calculate-manual-profit`, valid.map(i => ({ ean: i.ean, quantity: i.quantity })));
       setManualResults(res.data);
       toast.success("Υπολογισμός ολοκληρώθηκε");
     } catch (e) {
@@ -48,12 +50,42 @@ export default function ProfitCalculator() {
     }
   };
 
-  const addManualRow = () => setManualItems([...manualItems, { ean: "", quantity: 1 }]);
-  const removeManualRow = (i) => setManualItems(manualItems.filter((_, idx) => idx !== i));
-  const updateManualRow = (i, field, val) => {
+  const addManualRow = () => setManualItems([...manualItems, { search: "", ean: "", name: "", quantity: 1 }]);
+  const removeManualRow = (i) => {
+    setManualItems(manualItems.filter((_, idx) => idx !== i));
+    setSuggestions((prev) => { const n = { ...prev }; delete n[i]; return n; });
+  };
+  const updateManualQty = (i, val) => {
     const copy = [...manualItems];
-    copy[i][field] = field === "quantity" ? parseInt(val) || 1 : val;
+    copy[i].quantity = parseInt(val) || 1;
     setManualItems(copy);
+  };
+
+  const handleSearch = (i, val) => {
+    const copy = [...manualItems];
+    copy[i].search = val;
+    copy[i].ean = "";
+    copy[i].name = "";
+    setManualItems(copy);
+
+    if (searchTimers.current[i]) clearTimeout(searchTimers.current[i]);
+    if (val.length < 2) { setSuggestions((prev) => ({ ...prev, [i]: [] })); return; }
+
+    searchTimers.current[i] = setTimeout(async () => {
+      try {
+        const res = await axios.get(`${API}/products/search`, { params: { q: val, limit: 8 } });
+        setSuggestions((prev) => ({ ...prev, [i]: res.data }));
+      } catch { setSuggestions((prev) => ({ ...prev, [i]: [] })); }
+    }, 300);
+  };
+
+  const selectProduct = (i, product) => {
+    const copy = [...manualItems];
+    copy[i].search = product.name;
+    copy[i].ean = product.ean;
+    copy[i].name = product.name;
+    setManualItems(copy);
+    setSuggestions((prev) => ({ ...prev, [i]: [] }));
   };
 
   return (
@@ -199,27 +231,55 @@ export default function ProfitCalculator() {
       {/* Manual Entry Section */}
       <div className="p-5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)]">
         <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Χειροκίνητος Υπολογισμός</h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">Αναζητήστε με όνομα ή barcode</p>
         <div className="space-y-2 mb-4">
           {manualItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2" data-testid={`manual-row-${i}`}>
-              <Input
-                value={item.ean}
-                onChange={(e) => updateManualRow(i, "ean", e.target.value)}
-                placeholder="EAN / Barcode"
-                className="flex-1 bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)] text-sm"
-              />
-              <Input
-                type="number"
-                min={1}
-                value={item.quantity}
-                onChange={(e) => updateManualRow(i, "quantity", e.target.value)}
-                placeholder="Qty"
-                className="w-20 bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)] text-sm text-center"
-              />
-              {manualItems.length > 1 && (
-                <button onClick={() => removeManualRow(i)} className="p-2 text-red-400 hover:text-red-300">
-                  <Trash2 size={16} />
-                </button>
+            <div key={i} className="relative" data-testid={`manual-row-${i}`}>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    value={item.search}
+                    onChange={(e) => handleSearch(i, e.target.value)}
+                    placeholder="Αναζήτηση ονόματος ή EAN..."
+                    className="bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)] text-sm"
+                    data-testid={`manual-search-${i}`}
+                  />
+                  {item.ean && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] mono text-[var(--accent-green)]">
+                      {item.ean}
+                    </span>
+                  )}
+                </div>
+                <Input
+                  type="number"
+                  min={1}
+                  value={item.quantity}
+                  onChange={(e) => updateManualQty(i, e.target.value)}
+                  placeholder="Qty"
+                  className="w-20 bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-primary)] text-sm text-center"
+                  data-testid={`manual-qty-${i}`}
+                />
+                {manualItems.length > 1 && (
+                  <button onClick={() => removeManualRow(i)} className="p-2 text-red-400 hover:text-red-300">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+              {/* Autocomplete dropdown */}
+              {suggestions[i]?.length > 0 && (
+                <div className="absolute z-50 left-0 right-20 mt-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] shadow-lg max-h-48 overflow-y-auto">
+                  {suggestions[i].map((p) => (
+                    <button
+                      key={p.uid || p.ean}
+                      onClick={() => selectProduct(i, p)}
+                      className="w-full text-left px-3 py-2 hover:bg-[var(--bg-card)] transition-colors border-b border-[var(--border-color)] last:border-b-0"
+                      data-testid={`suggestion-${p.ean}`}
+                    >
+                      <p className="text-sm text-[var(--text-primary)] truncate">{p.name}</p>
+                      <span className="text-[10px] mono text-[var(--text-muted)]">{p.ean}</span>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           ))}
