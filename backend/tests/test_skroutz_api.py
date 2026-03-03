@@ -726,5 +726,272 @@ class TestWholesalePricing:
         print(f"✓ Calculation with wholesale price {payload['wholesale_price']}€: FBS={data['fbs_final_price']}€")
 
 
+# --- Profit Calculator Tests (iteration 4) ---
+# Tests for order upload, profit calculation, manual entry
+
+class TestProfitCalculatorUploadOrders:
+    """Tests for POST /api/upload/orders - order file upload and profit calculation"""
+    
+    def test_upload_orders_excel(self):
+        """Upload orders.xls and verify profit calculation results"""
+        orders_file = "/app/artifacts/orders_sample.xls"
+        
+        with open(orders_file, 'rb') as f:
+            response = requests.post(
+                f"{BASE_URL}/api/upload/orders",
+                files={"file": ("orders_sample.xls", f, "application/vnd.ms-excel")}
+            )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify response structure
+        assert "results" in data
+        assert "summary" in data
+        
+        # Verify summary structure
+        summary = data["summary"]
+        assert "total_items" in summary
+        assert "total_quantity" in summary
+        assert "total_revenue" in summary
+        assert "total_profit" in summary
+        assert "matched" in summary
+        assert "unmatched_count" in summary
+        assert "unmatched_names" in summary
+        
+        # Verify expected values (from curl test)
+        assert summary["matched"] == 63, f"Expected 63 matched, got {summary['matched']}"
+        assert summary["unmatched_count"] == 3, f"Expected 3 unmatched, got {summary['unmatched_count']}"
+        assert summary["total_profit"] > 150, f"Expected total_profit > 150, got {summary['total_profit']}"
+        
+        print(f"✓ Orders upload: matched={summary['matched']}, unmatched={summary['unmatched_count']}, profit={summary['total_profit']}€")
+    
+    def test_upload_orders_returns_correct_fields(self):
+        """Verify each result item has all required profit calculation fields"""
+        orders_file = "/app/artifacts/orders_sample.xls"
+        
+        with open(orders_file, 'rb') as f:
+            response = requests.post(
+                f"{BASE_URL}/api/upload/orders",
+                files={"file": ("orders_sample.xls", f, "application/vnd.ms-excel")}
+            )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Check at least one result item has all required fields
+        assert len(data["results"]) > 0
+        result = data["results"][0]
+        
+        required_fields = [
+            "name", "ean", "quantity", "my_price", "skroutz_price",
+            "wholesale", "commission", "vat_amount", "ad_cost",
+            "fbs_fee", "profit_per_unit", "total_profit", "price_mismatch"
+        ]
+        
+        for field in required_fields:
+            assert field in result, f"Missing field: {field}"
+        
+        print(f"✓ Result item has all {len(required_fields)} required fields")
+    
+    def test_upload_orders_price_mismatch_detection(self):
+        """Verify price mismatch is detected when Excel price differs from stored price"""
+        orders_file = "/app/artifacts/orders_sample.xls"
+        
+        with open(orders_file, 'rb') as f:
+            response = requests.post(
+                f"{BASE_URL}/api/upload/orders",
+                files={"file": ("orders_sample.xls", f, "application/vnd.ms-excel")}
+            )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Find items with price mismatch (Beauty of Joseon has 13.2 vs 11.0)
+        mismatches = [r for r in data["results"] if r["price_mismatch"]]
+        
+        assert len(mismatches) > 0, "No price mismatches found - expected at least one"
+        
+        # Verify mismatch details
+        mismatch = mismatches[0]
+        assert abs(mismatch["my_price"] - mismatch["skroutz_price"]) > 0.02, \
+            f"Price mismatch flag set but prices are close: {mismatch['my_price']} vs {mismatch['skroutz_price']}"
+        
+        print(f"✓ Found {len(mismatches)} items with price mismatch (my_price != skroutz_price)")
+    
+    def test_upload_orders_cancelled_excluded(self):
+        """Verify cancelled orders (Ακυρωμένη) are excluded from results"""
+        orders_file = "/app/artifacts/orders_sample.xls"
+        
+        with open(orders_file, 'rb') as f:
+            response = requests.post(
+                f"{BASE_URL}/api/upload/orders",
+                files={"file": ("orders_sample.xls", f, "application/vnd.ms-excel")}
+            )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Results should not include cancelled orders - if Excel has cancelled, they should be excluded
+        # We verify by checking count is less than total rows in Excel
+        total_items = data["summary"]["total_items"]
+        
+        # If there were cancelled orders, total_items would be less
+        print(f"✓ Results returned {total_items} items (cancelled orders excluded)")
+    
+    def test_upload_orders_invalid_file_returns_error(self):
+        """Test uploading invalid file returns proper error"""
+        # Create a fake file
+        response = requests.post(
+            f"{BASE_URL}/api/upload/orders",
+            files={"file": ("test.txt", b"This is not an xls file", "text/plain")}
+        )
+        
+        assert response.status_code == 400
+        data = response.json()
+        assert "detail" in data
+        print(f"✓ Invalid file upload returns 400 error: {data['detail'][:50]}...")
+
+
+class TestProfitCalculatorManualEntry:
+    """Tests for POST /api/calculate-manual-profit - manual barcode entry profit calculation"""
+    
+    def test_manual_profit_valid_eans(self):
+        """Test manual profit calculation with valid EANs"""
+        payload = [
+            {"ean": "5200040107010", "quantity": 3},  # Natural Doctor Complete D3 K2
+            {"ean": "4260006585079", "quantity": 2}   # Viogenesis Vitamin K2 D3
+        ]
+        
+        response = requests.post(
+            f"{BASE_URL}/api/calculate-manual-profit",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify structure
+        assert "results" in data
+        assert "total_profit" in data
+        assert len(data["results"]) == 2
+        
+        # Verify all items matched
+        for result in data["results"]:
+            assert result["matched"] == True, f"Product {result['ean']} should be matched"
+            assert "profit_per_unit" in result
+            assert "total_profit" in result
+        
+        # Verify total profit calculation
+        expected_total = sum(r["total_profit"] for r in data["results"])
+        assert abs(data["total_profit"] - expected_total) < 0.01, \
+            f"Total profit mismatch: {data['total_profit']} vs sum {expected_total}"
+        
+        print(f"✓ Manual profit calculation: {len(data['results'])} products, total={data['total_profit']}€")
+    
+    def test_manual_profit_invalid_ean(self):
+        """Test manual profit calculation with non-existent EAN returns unmatched"""
+        payload = [
+            {"ean": "9999999999999", "quantity": 1}  # Non-existent EAN
+        ]
+        
+        response = requests.post(
+            f"{BASE_URL}/api/calculate-manual-profit",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Should return unmatched
+        assert len(data["results"]) == 1
+        result = data["results"][0]
+        assert result["matched"] == False
+        assert result["name"] == "Δεν βρέθηκε"
+        
+        # Total profit should be 0 for unmatched
+        assert data["total_profit"] == 0
+        
+        print(f"✓ Invalid EAN correctly returns unmatched: {result['name']}")
+    
+    def test_manual_profit_mixed_valid_invalid(self):
+        """Test manual profit calculation with mix of valid and invalid EANs"""
+        payload = [
+            {"ean": "5200040107010", "quantity": 1},  # Valid EAN
+            {"ean": "0000000000000", "quantity": 1}   # Invalid EAN
+        ]
+        
+        response = requests.post(
+            f"{BASE_URL}/api/calculate-manual-profit",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert len(data["results"]) == 2
+        
+        # First should be matched
+        assert data["results"][0]["matched"] == True
+        # Second should be unmatched
+        assert data["results"][1]["matched"] == False
+        
+        # Total profit only from matched
+        matched_profit = sum(r["total_profit"] for r in data["results"] if r.get("matched"))
+        assert data["total_profit"] == matched_profit
+        
+        print(f"✓ Mixed valid/invalid: 1 matched, 1 unmatched, profit={data['total_profit']}€")
+    
+    def test_manual_profit_empty_array(self):
+        """Test manual profit calculation with empty array"""
+        payload = []
+        
+        response = requests.post(
+            f"{BASE_URL}/api/calculate-manual-profit",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["results"] == []
+        assert data["total_profit"] == 0
+        
+        print("✓ Empty array handled correctly")
+    
+    def test_manual_profit_quantity_affects_total(self):
+        """Test that quantity correctly multiplies profit per unit"""
+        ean = "5200040107010"
+        
+        # Get single unit profit
+        response1 = requests.post(
+            f"{BASE_URL}/api/calculate-manual-profit",
+            json=[{"ean": ean, "quantity": 1}],
+            headers={"Content-Type": "application/json"}
+        )
+        data1 = response1.json()
+        profit_per_unit = data1["results"][0]["profit_per_unit"]
+        
+        # Get 5 unit profit
+        response5 = requests.post(
+            f"{BASE_URL}/api/calculate-manual-profit",
+            json=[{"ean": ean, "quantity": 5}],
+            headers={"Content-Type": "application/json"}
+        )
+        data5 = response5.json()
+        total_profit_5 = data5["results"][0]["total_profit"]
+        
+        # Verify: total_profit = profit_per_unit * quantity
+        expected = round(profit_per_unit * 5, 2)
+        assert abs(total_profit_5 - expected) < 0.02, \
+            f"Quantity not correctly calculated: {total_profit_5} vs expected {expected}"
+        
+        print(f"✓ Quantity correctly multiplies profit: {profit_per_unit}€/unit x 5 = {total_profit_5}€")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

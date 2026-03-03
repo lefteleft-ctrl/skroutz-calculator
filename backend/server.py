@@ -790,6 +790,194 @@ async def export_excel(req: BulkCalculateRequest):
         headers={"Content-Disposition": "attachment; filename=skroutz_pricing.xlsx"}
     )
 
+
+# --- Orders / Profit Calculation ---
+
+COIN_COST_EUR = 0.0015
+
+@api_router.post("/upload/orders")
+async def upload_orders(file: UploadFile = File(...)):
+    """Parse orders Excel (.xls), match by EAN, calculate profit per product."""
+    import xlrd
+
+    contents = await file.read()
+    try:
+        wb = xlrd.open_workbook(file_contents=contents)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Μη έγκυρο αρχείο .xls")
+
+    ws = wb.sheet_by_index(0)
+
+    # Parse orders: extract EAN, quantity, skroutz selling price
+    order_items = []
+    current_order = {}
+    for r in range(1, ws.nrows):
+        date_val = ws.cell_value(r, 0)
+        product_name = ws.cell_value(r, 20)
+
+        if date_val:
+            # Order header row
+            status = str(ws.cell_value(r, 4)).strip()
+            current_order = {"status": status}
+        elif product_name:
+            # Product row
+            ean = str(ws.cell_value(r, 24)).strip()
+            if '.' in ean:
+                ean = ean.split('.')[0]
+
+            qty_val = ws.cell_value(r, 22)
+            qty = int(float(qty_val)) if qty_val else 1
+
+            price_str = str(ws.cell_value(r, 21)).replace(',', '.')
+            try:
+                skroutz_price = float(price_str)
+            except (ValueError, TypeError):
+                skroutz_price = 0
+
+            status = current_order.get("status", "")
+            if "Ακυρωμένη" in status or "Επιστροφή" in status:
+                continue
+
+            order_items.append({
+                "name_from_excel": str(product_name).strip(),
+                "ean": ean,
+                "quantity": qty,
+                "skroutz_sell_price": skroutz_price,
+            })
+
+    if not order_items:
+        raise HTTPException(status_code=400, detail="Δεν βρέθηκαν παραγγελίες στο αρχείο")
+
+    # Get unique EANs and fetch from DB
+    ean_set = set(item["ean"] for item in order_items if item["ean"])
+    products_cursor = db.products.find(
+        {"ean": {"$in": list(ean_set)}},
+        {"_id": 0}
+    )
+    ean_to_product = {}
+    async for p in products_cursor:
+        ean_to_product[p.get("ean")] = p
+
+    # Calculate profit for each order item
+    results = []
+    total_profit = 0
+    total_revenue = 0
+    matched_count = 0
+    unmatched = []
+
+    for item in order_items:
+        product = ean_to_product.get(item["ean"])
+        if not product:
+            unmatched.append(item["name_from_excel"])
+            continue
+
+        matched_count += 1
+        my_price = product.get("current_price") or product.get("fbs_current_price") or 0
+        wholesale = product.get("user_wholesale_price") or 0
+        mp_pct = product.get("marketplace_commission_pct") or 0
+        fbs_fee = product.get("fbs_fee") or 0
+        ad_pct = (product.get("advertising_commission_pct") or 0) if product.get("user_ads_enabled") else 0
+        coins_qty = product.get("user_coins_quantity") or 0
+        vat_pct = product.get("user_vat_pct") or 24.0
+
+        vat_decimal = vat_pct / 100.0
+        commission = my_price * (mp_pct / 100.0)
+        ad_cost = my_price * (ad_pct / 100.0)
+        vat_amount = my_price * (1 - 1 / (1 + vat_decimal))
+        coins_cost = coins_qty * COIN_COST_EUR
+        fixed_costs = fbs_fee + 0.12 + coins_cost
+
+        profit_per_unit = my_price - commission - ad_cost - vat_amount - fixed_costs - wholesale
+        profit_per_unit = round(profit_per_unit, 2)
+        total_for_item = round(profit_per_unit * item["quantity"], 2)
+
+        price_mismatch = abs(my_price - item["skroutz_sell_price"]) > 0.02 if my_price > 0 and item["skroutz_sell_price"] > 0 else False
+
+        total_profit += total_for_item
+        total_revenue += round(my_price * item["quantity"], 2)
+
+        results.append({
+            "name": product.get("name", item["name_from_excel"]),
+            "ean": item["ean"],
+            "quantity": item["quantity"],
+            "my_price": round(my_price, 2),
+            "skroutz_price": round(item["skroutz_sell_price"], 2),
+            "wholesale": round(wholesale, 2),
+            "commission": round(commission, 2),
+            "vat_amount": round(vat_amount, 2),
+            "ad_cost": round(ad_cost, 2),
+            "fbs_fee": round(fbs_fee + 0.12, 2),
+            "coins_cost": round(coins_cost, 4),
+            "profit_per_unit": profit_per_unit,
+            "total_profit": total_for_item,
+            "price_mismatch": price_mismatch,
+        })
+
+    return {
+        "results": results,
+        "summary": {
+            "total_items": len(results),
+            "total_quantity": sum(r["quantity"] for r in results),
+            "total_revenue": round(total_revenue, 2),
+            "total_profit": round(total_profit, 2),
+            "matched": matched_count,
+            "unmatched_count": len(unmatched),
+            "unmatched_names": unmatched[:20],
+        }
+    }
+
+
+@api_router.post("/calculate-manual-profit")
+async def calculate_manual_profit(items: List[dict]):
+    """Calculate profit for manually entered barcode+quantity pairs."""
+    eans = [str(item.get("ean", "")).strip() for item in items if item.get("ean")]
+    products_cursor = db.products.find({"ean": {"$in": eans}}, {"_id": 0})
+    ean_to_product = {}
+    async for p in products_cursor:
+        ean_to_product[p.get("ean")] = p
+
+    results = []
+    total_profit = 0
+    for item in items:
+        ean = str(item.get("ean", "")).strip()
+        qty = int(item.get("quantity", 1))
+        product = ean_to_product.get(ean)
+        if not product:
+            results.append({"ean": ean, "quantity": qty, "matched": False, "name": "Δεν βρέθηκε"})
+            continue
+
+        my_price = product.get("current_price") or product.get("fbs_current_price") or 0
+        wholesale = product.get("user_wholesale_price") or 0
+        mp_pct = product.get("marketplace_commission_pct") or 0
+        fbs_fee = product.get("fbs_fee") or 0
+        ad_pct = (product.get("advertising_commission_pct") or 0) if product.get("user_ads_enabled") else 0
+        coins_qty = product.get("user_coins_quantity") or 0
+        vat_pct = product.get("user_vat_pct") or 24.0
+
+        vat_decimal = vat_pct / 100.0
+        commission = my_price * (mp_pct / 100.0)
+        ad_cost = my_price * (ad_pct / 100.0)
+        vat_amount = my_price * (1 - 1 / (1 + vat_decimal))
+        coins_cost = coins_qty * COIN_COST_EUR
+        fixed_costs = fbs_fee + 0.12 + coins_cost
+
+        profit_per_unit = round(my_price - commission - ad_cost - vat_amount - fixed_costs - wholesale, 2)
+        total_for_item = round(profit_per_unit * qty, 2)
+        total_profit += total_for_item
+
+        results.append({
+            "name": product.get("name", ""),
+            "ean": ean,
+            "quantity": qty,
+            "matched": True,
+            "my_price": round(my_price, 2),
+            "wholesale": round(wholesale, 2),
+            "profit_per_unit": profit_per_unit,
+            "total_profit": total_for_item,
+        })
+
+    return {"results": results, "total_profit": round(total_profit, 2)}
+
 # Include router
 app.include_router(api_router)
 

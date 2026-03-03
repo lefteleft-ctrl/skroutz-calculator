@@ -88,14 +88,24 @@ export default function Calculator() {
           </p>
         </div>
         {hasData && (
-          <Link
-            to="/products"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-orange)] transition-colors text-sm text-[var(--text-secondary)] hover:text-[var(--accent-orange)]"
-            data-testid="products-list-link"
-          >
-            <List size={16} />
-            <span>Λίστα Προϊόντων</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/products"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--accent-orange)] transition-colors text-sm text-[var(--text-secondary)] hover:text-[var(--accent-orange)]"
+              data-testid="products-list-link"
+            >
+              <List size={16} />
+              <span>Λίστα Προϊόντων</span>
+            </Link>
+            <Link
+              to="/profit"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 hover:border-[var(--accent-green)] transition-colors text-sm text-[var(--accent-green)]"
+              data-testid="profit-calc-link"
+            >
+              <CalcIcon size={16} />
+              <span>Υπολογισμός Κέρδους</span>
+            </Link>
+          </div>
         )}
       </div>
 
