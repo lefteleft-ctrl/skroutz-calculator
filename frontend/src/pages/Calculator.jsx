@@ -6,7 +6,7 @@ import ProductSearch from "@/components/ProductSearch";
 import PriceCalculator from "@/components/PriceCalculator";
 import PriceResults from "@/components/PriceResults";
 import QuickCalculator from "@/components/QuickCalculator";
-import { Upload, Search, Calculator as CalcIcon, Zap, List, Save, Settings } from "lucide-react";
+import { Upload, Search, Calculator as CalcIcon, Zap, List, Save, Settings, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +17,7 @@ export default function Calculator() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [calcResult, setCalcResult] = useState(null);
   const [calculating, setCalculating] = useState(false);
+  const [showFormula, setShowFormula] = useState(false);
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -105,6 +106,14 @@ export default function Calculator() {
               <CalcIcon size={16} />
               <span>Υπολογισμός Κέρδους</span>
             </Link>
+            <button
+              onClick={() => setShowFormula(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/30 hover:border-[var(--accent-purple)] transition-colors text-sm text-[var(--accent-purple)]"
+              data-testid="formula-btn"
+            >
+              <BookOpen size={16} />
+              <span>Μαθηματικός Τύπος</span>
+            </button>
           </div>
         )}
       </div>
@@ -194,9 +203,66 @@ export default function Calculator() {
       {/* Footer */}
       <div className="mt-16 pt-6 border-t border-[var(--border-color)] text-center">
         <p className="text-xs text-[var(--text-muted)]">
-          Τύπος: Τελική Τιμή = (Χονδρική + Κέρδος + Fee + Coins) &divide; (1 - MP% - Ads% - (1 - 1/(1+ΦΠΑ%)))
+          Skroutz Price Calculator &mdash; Pharmaverse
         </p>
       </div>
+
+      {/* Formula Modal */}
+      {showFormula && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowFormula(false)}>
+          <div className="max-w-2xl w-full mx-4 p-6 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-[var(--accent-purple)]">Μαθηματικός Τύπος</h2>
+              <button onClick={() => setShowFormula(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl">&times;</button>
+            </div>
+
+            <div className="space-y-5">
+              <div className="p-4 rounded-lg bg-[var(--bg-card)] border border-[var(--accent-purple)]/30">
+                <p className="text-xs text-[var(--text-muted)] mb-2">Τύπος Τελικής Τιμής FBS:</p>
+                <p className="text-base mono font-bold text-[var(--text-primary)] leading-relaxed">
+                  Τελική Τιμή = (Χονδρική + Κέρδος + FBS Fee + 0.12 + Coins) / (1 - MP% - Ads% - (1 - 1/(1+ΦΠΑ%)))
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-sky-400 mb-2">Αριθμητής (σταθερά κόστη):</p>
+                <div className="space-y-1.5 pl-3">
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">Χονδρική</span> = τιμή αγοράς προϊόντος</p>
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">Κέρδος</span> = επιθυμητό κέρδος σε € (π.χ. 0.90€)</p>
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">FBS Fee</span> = χρέωση Skroutz FBS ανά προϊόν</p>
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">0.12€</span> = μεταφορικά/διαχείριση</p>
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">Coins</span> = αριθμός coins × 0.0015€</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-[var(--accent-orange)] mb-2">Παρονομαστής (ποσοστιαία κόστη):</p>
+                <div className="space-y-1.5 pl-3">
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">MP%</span> = προμήθεια Marketplace (π.χ. 8.6% = 0.086)</p>
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">Ads%</span> = διαφήμιση (π.χ. 4.56% = 0.0456, ή 0 χωρίς ads)</p>
+                  <p className="text-sm text-[var(--text-secondary)]"><span className="text-[var(--text-primary)] font-semibold">(1 - 1/(1+ΦΠΑ%))</span> = επίδραση ΦΠΑ (24% → 0.1935)</p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <p className="text-xs text-emerald-400 mb-2">Παράδειγμα:</p>
+                <div className="space-y-1 text-sm mono text-[var(--text-secondary)]">
+                  <p>Χονδρική=11.28 + Κέρδος=0.90 + FBS=0.59 + 0.12 = <span className="text-[var(--text-primary)] font-semibold">12.89€</span></p>
+                  <p>1 - 0.086 - 0 - 0.1935 = <span className="text-[var(--text-primary)] font-semibold">0.7205</span></p>
+                  <p>Τελική Τιμή = 12.89 / 0.7205 = <span className="text-[var(--accent-orange)] font-bold">17.89€</span></p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <p className="text-xs text-red-400 mb-2">Υπολογισμός Κέρδους (αντίστροφος):</p>
+                <p className="text-sm mono text-[var(--text-secondary)]">
+                  Κέρδος = Τιμή Πώλησης - Προμήθεια - Ads - ΦΠΑ - FBS - 0.12 - Coins - Χονδρική
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
