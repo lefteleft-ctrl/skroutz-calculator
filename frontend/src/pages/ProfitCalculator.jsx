@@ -308,20 +308,22 @@ export default function ProfitCalculator() {
                   <>
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">{r.name}</p>
-                        <span className="text-[11px] mono text-[var(--text-muted)]">{r.ean} — x{r.quantity} τμχ</span>
+                        <p className="text-base font-semibold text-[var(--text-primary)]">{r.name}</p>
+                        <span className="text-xs mono text-[var(--text-muted)]">{r.ean}</span>
                       </div>
                       <div className="text-right">
-                        <span className={`text-lg mono font-bold ${r.total_profit >= 0 ? "text-[var(--accent-green)]" : "text-red-500"}`}>
+                        <span className={`text-xl mono font-bold ${r.total_profit >= 0 ? "text-[var(--accent-green)]" : "text-red-500"}`}>
                           {r.total_profit >= 0 ? "+" : ""}{r.total_profit.toFixed(2)}€
                         </span>
-                        <p className="text-[11px] text-[var(--text-muted)]">{r.profit_per_unit >= 0 ? "+" : ""}{r.profit_per_unit.toFixed(2)}€/τμχ</p>
+                        <p className="text-sm mono text-[var(--text-secondary)]">
+                          {r.profit_per_unit >= 0 ? "+" : ""}{r.profit_per_unit.toFixed(2)}€ × {r.quantity} τμχ
+                        </p>
                       </div>
                     </div>
                     {r.missing_wholesale && (
-                      <div className="flex items-center gap-2 mb-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/20">
-                        <AlertTriangle size={14} className="text-yellow-500 shrink-0" />
-                        <span className="text-xs text-yellow-500 font-semibold">Λείπει η χονδρική τιμή! Το κέρδος δεν είναι ακριβές.</span>
+                      <div className="flex items-center gap-2 mb-3 p-2.5 rounded bg-yellow-500/10 border border-yellow-500/20">
+                        <AlertTriangle size={16} className="text-yellow-500 shrink-0" />
+                        <span className="text-sm text-yellow-500 font-semibold">Λείπει η χονδρική τιμή! Το κέρδος δεν είναι ακριβές.</span>
                       </div>
                     )}
                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 text-center">
@@ -362,9 +364,9 @@ function SummaryCard({ label, value, color }) {
 
 function BreakdownItem({ label, value, color }) {
   return (
-    <div className="p-1.5 rounded bg-[var(--bg-primary)]">
-      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">{label}</p>
-      <p className={`text-xs mono font-semibold ${color}`}>{value}</p>
+    <div className="p-2 rounded bg-[var(--bg-primary)]">
+      <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
+      <p className={`text-sm mono font-semibold ${color}`}>{value}</p>
     </div>
   );
 }
